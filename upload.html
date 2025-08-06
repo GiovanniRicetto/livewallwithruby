@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar Fotos para a Festa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #000000; color: #f0f0f0; overflow: hidden; }
+        .thumbnail-container { position: relative; width: 100%; aspect-ratio: 4 / 3; }
+        .thumbnail-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.375rem; }
+        .remove-btn { position: absolute; top: -0.5rem; right: -0.5rem; background-color: rgba(239, 68, 68, 0.9); color: white; border-radius: 9999px; width: 1.75rem; height: 1.75rem; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; border: 2px solid white; transition: transform 0.2s; }
+        .neon-background { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden; }
+        .neon-light { position: absolute; width: 2px; height: 200%; box-shadow: 0 0 5px, 0 0 10px, 0 0 20px; animation: move-light linear infinite; }
+        .neon-light.pink { color: #ec4899; } .neon-light.blue { color: #3b82f6; } .neon-light.purple { color: #a855f7; }
+        .neon-light:nth-child(1) { top: -50%; left: 10%; animation-duration: 15s; } .neon-light:nth-child(2) { top: -50%; left: 30%; animation-duration: 12s; } .neon-light:nth-child(3) { top: -50%; left: 50%; animation-duration: 18s; } .neon-light:nth-child(4) { top: -50%; left: 70%; animation-duration: 14s; } .neon-light:nth-child(5) { top: -50%; left: 90%; animation-duration: 16s; }
+        @keyframes move-light { 0% { transform: translateY(-50%) rotate(45deg); } 100% { transform: translateY(50vh) rotate(45deg); } }
+        .back-to-mural-button { position: fixed; bottom: 2rem; left: 2rem; background-color: #374151; color: white; padding: 1rem; border-radius: 9999px; display: flex; align-items: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,.3); z-index: 20; text-decoration: none; transition: transform 0.2s; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div class="neon-background">
+        <div class="neon-light pink"></div><div class="neon-light blue"></div><div class="neon-light purple"></div><div class="neon-light pink"></div><div class="neon-light blue"></div>
+    </div>
+
+    <div class="p-4 sm:p-8 flex flex-col items-center justify-center min-h-screen relative z-10">
+        <div class="bg-gray-900 bg-opacity-80 backdrop-blur-sm text-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-lg w-full text-center">
+            
+            <div id="initial-view">
+                <h2 class="text-3xl font-bold mb-2">Compartilhe suas Fotos!</h2>
+                <p class="text-gray-300 mb-6">Envie até 10 fotos por vez para o mural.</p>
+                <!-- MUDANÇA: Adicionado um contêiner para os botões -->
+                <div class="space-y-4">
+                    <button id="take-photo-button" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-colors">📷 Tirar Foto</button>
+                    <button id="choose-photos-button" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors">🖼️ Escolher da Galeria</button>
+                </div>
+            </div>
+
+            <!-- MUDANÇA: Adicionado input para a câmera -->
+            <input type="file" id="camera-input" class="hidden" accept="image/*" capture="camera">
+            <input type="file" id="gallery-input" class="hidden" accept="image/jpeg,image/png,image/gif" multiple>
+
+            <div id="preview-container" class="hidden text-left">
+                <h3 class="text-xl font-bold mb-4">Fotos Selecionadas</h3>
+                <div class="mb-4">
+                    <label for="photo-title" class="block text-sm font-medium text-gray-300 mb-1">Título do Álbum</label>
+                    <input type="text" id="photo-title" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2" value="Festa Trintou da Ana">
+                </div>
+                <div id="thumbnail-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-4 max-h-60 overflow-y-auto p-2 bg-gray-800 rounded-lg border"></div>
+                <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                    <button id="upload-button" class="w-full bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600">Enviar Álbum 🚀</button>
+                    <button id="cancel-button" class="w-full bg-gray-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-600">Cancelar</button>
+                </div>
+            </div>
+
+            <div id="loading-spinner" class="hidden mt-6">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
+                <p class="mt-4 text-gray-400">Enviando...</p>
+            </div>
+            
+            <div id="success-message" class="hidden mt-6 text-green-400">
+                <p class="text-2xl font-bold">Fotos enviadas com sucesso!</p>
+                <button id="send-more-button" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg">Enviar Mais Fotos</button>
+            </div>
+        </div>
+    </div>
+    
+    <a href="mural.html" class="back-to-mural-button">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.158 0a.075.075 0 10-1.5 0 .075.075 0 001.5 0z" /></svg>
+    </a>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const RAILS_API_URL = 'http://localhost:3000/photos';
+            const MAX_FILES = 10;
+            const initialView = document.getElementById('initial-view');
+            const previewContainer = document.getElementById('preview-container');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const successMessage = document.getElementById('success-message');
+            
+            // MUDANÇA: Selecionando o novo botão e input
+            const takePhotoButton = document.getElementById('take-photo-button');
+            const choosePhotosButton = document.getElementById('choose-photos-button');
+            const cameraInput = document.getElementById('camera-input');
+            const galleryInput = document.getElementById('gallery-input');
+
+            const uploadButton = document.getElementById('upload-button');
+            const cancelButton = document.getElementById('cancel-button');
+            const sendMoreButton = document.getElementById('send-more-button');
+            const thumbnailGrid = document.getElementById('thumbnail-grid');
+            const photoTitleInput = document.getElementById('photo-title');
+            let selectedFiles = [];
+
+            // MUDANÇA: Adicionando listeners para o novo botão e input
+            takePhotoButton.addEventListener('click', () => cameraInput.click());
+            choosePhotosButton.addEventListener('click', () => galleryInput.click());
+            cameraInput.addEventListener('change', handleFileSelect);
+            galleryInput.addEventListener('change', handleFileSelect);
+
+            cancelButton.addEventListener('click', resetUI);
+            sendMoreButton.addEventListener('click', resetUI);
+
+            function handleFileSelect(event) {
+                const files = Array.from(event.target.files);
+                if (files.length === 0) return;
+                if ((selectedFiles.length + files.length) > MAX_FILES) {
+                    alert(`Você pode selecionar no máximo ${MAX_FILES} fotos por vez.`);
+                    return;
+                }
+                selectedFiles.push(...files);
+                renderThumbnails();
+                showView('preview');
+                event.target.value = '';
+            }
+
+            function renderThumbnails() {
+                thumbnailGrid.innerHTML = '';
+                selectedFiles.forEach((file, index) => {
+                    const container = document.createElement('div');
+                    container.className = 'thumbnail-container';
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'remove-btn';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.onclick = () => removeFile(index);
+                    container.appendChild(img);
+                    container.appendChild(removeBtn);
+                    thumbnailGrid.appendChild(container);
+                });
+            }
+
+            function removeFile(indexToRemove) {
+                selectedFiles.splice(indexToRemove, 1);
+                renderThumbnails();
+                if (selectedFiles.length === 0) showView('initial');
+            }
+
+            function showView(viewName) {
+                ['initial-view', 'preview-container', 'loading-spinner', 'success-message'].forEach(id => document.getElementById(id).classList.add('hidden'));
+                // Corrigido para lidar com os diferentes nomes de ID
+                const elementId = viewName === 'preview' ? 'preview-container' : (viewName === 'initial' ? 'initial-view' : `${viewName}`);
+                document.getElementById(elementId).classList.remove('hidden');
+            }
+
+            function resetUI() {
+                selectedFiles = [];
+                thumbnailGrid.innerHTML = '';
+                showView('initial-view');
+            }
+
+            uploadButton.addEventListener('click', async () => {
+                if (selectedFiles.length === 0) return;
+                const title = photoTitleInput.value.trim();
+                if (title === "") {
+                    alert("Por favor, preencha o título do álbum.");
+                    return;
+                }
+                showView('loading-spinner');
+                uploadButton.disabled = true;
+
+                const formData = new FormData();
+                formData.append('photo[title]', title);
+                selectedFiles.forEach(file => formData.append('photo[images][]', file));
+
+                try {
+                    const response = await fetch(RAILS_API_URL, { method: 'POST', body: formData });
+                    if (response.ok) {
+                        showView('success-message');
+                    } else {
+                        const errorData = await response.json();
+                        const errorMessages = Object.entries(errorData).map(([field, messages]) => `${field}: ${messages.join(', ')}`).join('\n');
+                        alert(`Erro ao enviar:\n${errorMessages}`);
+                        showView('preview');
+                    }
+                } catch (error) {
+                    alert('Erro de conexão. Verifique se a API está rodando.');
+                    showView('preview');
+                } finally {
+                    uploadButton.disabled = false;
+                }
+            });
+            showView('initial-view');
+        });
+    </script>
+</body>
+</html>
