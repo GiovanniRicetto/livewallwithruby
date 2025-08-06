@@ -4,14 +4,12 @@ class PhotosController < ApplicationController
   before_action :set_photo, only: %i[ show update destroy ]
 
   # GET /photos
-  # UNIFICADO: Ação 'index' única e correta.
   def index
-    @photos = Photo.all
+    @photos = Photo.all.order(created_at: :desc)
     render json: @photos.map { |photo| photo_with_image_urls(photo) }
   end
 
   # GET /photos/1
-  # CORRIGIDO: Ação 'show' agora usa o helper para múltiplas imagens.
   def show
     render json: photo_with_image_urls(@photo)
   end
@@ -21,7 +19,6 @@ class PhotosController < ApplicationController
     @photo = Photo.new(photo_params)
 
     if @photo.save
-      # CORRIGIDO: Retorna o objeto com as URLs das imagens no sucesso.
       render json: photo_with_image_urls(@photo), status: :created, location: @photo
     else
       render json: @photo.errors, status: :unprocessable_entity
@@ -40,7 +37,22 @@ class PhotosController < ApplicationController
   # DELETE /photos/1
   def destroy
     @photo.destroy!
-    head :no_content # Adicionado para seguir a convenção RESTful
+    head :no_content
+  end
+
+  # --- AÇÕES ADICIONADAS ---
+
+  # DELETE /photos/destroy_all
+  def destroy_all
+    Photo.destroy_all
+    head :no_content
+  end
+
+  # DELETE /photos/reset_all
+  def reset_all
+    # Esta ação fará o mesmo que destroy_all para garantir a limpeza.
+    Photo.destroy_all
+    head :no_content
   end
 
   private
@@ -57,7 +69,11 @@ class PhotosController < ApplicationController
 
   # Helper para adicionar as URLs das imagens ao JSON de resposta.
   def photo_with_image_urls(photo)
-    return nil unless photo.persisted? # Garante que a foto foi salva
-    photo.as_json.merge(image_urls: photo.images.map { |image| url_for(image) })
+    return nil unless photo.persisted?
+    # Garante que o objeto retornado inclua o created_at para ordenação no frontend.
+    photo.as_json.merge(
+      image_urls: photo.images.map { |image| url_for(image) },
+      created_at: photo.created_at
+    )
   end
 end

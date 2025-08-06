@@ -9,7 +9,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* */
         html, body { height: 100%; overflow: hidden; }
         body { font-family: 'Inter', sans-serif; background-color: #000000; color: #f0f0f0; }
         .font-handwriting { font-family: 'Kalam', cursive; }
@@ -64,13 +63,13 @@
 
     <div id="display-view" class="p-4 md:p-8 flex flex-col h-screen">
         <header class="text-center mb-4 md:mb-8 z-10 flex-shrink-0">
-           <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold text-white font-handwriting" style="text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #f77, 0 0 30px #f77, 0 0 40px #f77, 0 0 55px #f77;">Galeria Trintou</h1> 
+           <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold text-white font-handwriting" style="text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #f77, 0 0 30px #f77, 0 0 40px #f77, 0 0 55px #f77;">Galeria Trintou</h1>
         </header>
         <main id="photo-wall-container" class="w-full flex-grow">
             <div class="scroll-row" id="row1"></div>
             <div class="scroll-row" id="row2"></div>
         </main>
-        <div id="empty-state" class="absolute inset-0 flex items-center justify-center text-gray-500 z-0 pointer-events-none"> 
+        <div id="empty-state" class="absolute inset-0 flex items-center justify-center text-gray-500 z-0 pointer-events-none">
             <p class="text-2xl bg-black bg-opacity-20 p-4 rounded-lg">Aguardando as primeiras mídias...</p>
         </div>
     </div>
@@ -79,7 +78,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
         </svg>
-     </a> 
+     </a>
 
     <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden cursor-pointer">
         <div id="lightbox-content" class="relative"></div>
@@ -87,12 +86,12 @@
     </div>
 
     <script>
-        // MUDANÇA: Apontando para a sua API Rails
         const RAILS_API_URL = 'http://localhost:3000/photos';
+        const VIDEO_API_URL = 'http://localhost:3000/videos';
 
         let row1, row2, emptyState, lightbox, lightboxContent, lightboxClose;
         let allMedia = [];
-        const POLLING_INTERVAL = 5000; // 5 segundos
+        const POLLING_INTERVAL = 5000;
 
         document.addEventListener('DOMContentLoaded', () => {
             row1 = document.getElementById('row1');
@@ -102,50 +101,68 @@
             lightboxContent = document.getElementById('lightbox-content');
             lightboxClose = document.getElementById('lightbox-close');
 
-            fetchPhotos();
-            setInterval(fetchPhotos, POLLING_INTERVAL);
-            
+            fetchAllMedia();
+            setInterval(fetchAllMedia, POLLING_INTERVAL);
+
             lightboxClose.addEventListener('click', closeLightbox);
             lightbox.addEventListener('click', (e) => {
                 if (e.target === lightbox) closeLightbox();
             });
         });
-        
-        // MUDANÇA: Função reescrita para usar fetch com a API Rails
-        async function fetchPhotos() {
+
+        async function fetchAllMedia() {
             try {
-                const response = await fetch(RAILS_API_URL);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const albums = await response.json();
-                handleMediaResponse(albums);
+                const [photosResponse, videosResponse] = await Promise.all([
+                    fetch(RAILS_API_URL),
+                    fetch(VIDEO_API_URL)
+                ]);
+
+                const albums = photosResponse.ok ? await photosResponse.json() : [];
+                const videos = videosResponse.ok ? await videosResponse.json() : [];
+
+                handleMediaResponse(albums, videos);
             } catch (error) {
-                console.error("Erro ao buscar fotos da API Rails:", error);
+                console.error("Erro ao buscar mídias da API Rails:", error);
             }
         }
-        
-        // MUDANÇA: Função adaptada para o formato da API Rails
-        function handleMediaResponse(albums) {
-            // Transforma a resposta da API (álbuns com várias imagens) em uma lista simples de imagens.
-            const newMediaList = albums.flatMap((album, albumIndex) => 
+
+        function handleMediaResponse(albums, videos) {
+            const newPhotoList = albums.flatMap((album, albumIndex) =>
                 album.image_urls.map((url, imageIndex) => ({
-                    id: `${album.id}-${imageIndex}`, // Cria um ID único para cada imagem
+                    id: `photo-${album.id}-${imageIndex}`,
                     url: url,
-                    title: album.title
+                    title: album.title,
+                    createdAt: album.created_at
                 }))
             );
 
-            if (Array.isArray(newMediaList)) {
-                emptyState.style.display = newMediaList.length === 0 ? 'flex' : 'none';
-                
-                // Reconstrói o mural apenas se o número total de fotos mudou.
-                if (newMediaList.length !== allMedia.length) {
-                    allMedia = newMediaList;
-                    rebuildRows();
-                }
-            } else {
-                console.error("Formato de resposta inesperado da API.");
+            // --- ALTERAÇÃO PRINCIPAL AQUI ---
+            // Filtra o array de vídeos para garantir que cada item é válido e
+            // possui uma 'gif_url' antes de tentar processá-lo.
+            // Isto evita erros caso a API retorne 'null' para vídeos não processados.
+            const validVideos = videos.filter(video => video && video.gif_url);
+
+            const newVideoList = validVideos.map(video => ({
+                    id: `video-${video.id}`,
+                    url: video.gif_url,
+                    title: 'Vídeo',
+                    createdAt: video.created_at
+            }));
+
+            const newMediaList = [...newPhotoList, ...newVideoList];
+
+            // Ordena a lista pela data de criação para que as mídias mais recentes apareçam.
+            newMediaList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+
+            emptyState.style.display = newMediaList.length === 0 ? 'flex' : 'none';
+
+            const currentIds = allMedia.map(m => m.id).join(',');
+            const newIds = newMediaList.map(m => m.id).join(',');
+
+            if (currentIds !== newIds) {
+                allMedia = newMediaList;
+                rebuildRows();
             }
         }
 
@@ -165,6 +182,10 @@
             setTimeout(() => {
                 const containerWidth = document.getElementById('photo-wall-container').clientWidth;
                 [row1, row2].forEach(row => {
+                    const originalChildren = Array.from(row.children).filter(child => !child.classList.contains('clone'));
+                    row.innerHTML = '';
+                    originalChildren.forEach(child => row.appendChild(child));
+
                     if (row.scrollWidth > containerWidth) {
                         duplicateRowContent(row);
                         row.classList.add('scrolling');
@@ -179,10 +200,9 @@
             const children = Array.from(row.children);
             children.forEach(child => {
                 const clone = child.cloneNode(true);
-                // Encontra a mídia original pelo ID único que criamos
+                clone.classList.add('clone');
                 const originalMediaData = allMedia.find(m => m.id === child.dataset.mediaId);
                 if (originalMediaData) {
-                    // Re-adiciona o evento de clique aos clones
                     clone.addEventListener('click', () => openLightbox(originalMediaData));
                 }
                 row.appendChild(clone);
@@ -197,10 +217,10 @@
             const mediaElement = document.createElement('img');
             mediaElement.src = mediaData.url;
             mediaElement.className = 'media';
-            mediaElement.alt = mediaData.title; // Adiciona um texto alternativo
+            mediaElement.alt = mediaData.title;
 
             const caption = document.createElement('p');
-            caption.textContent = 'Trintou da Ana'; // Você pode usar mediaData.title aqui se quiser
+            caption.textContent = mediaData.title === 'Vídeo' ? 'Vídeo' : 'Trintou da Ana';
             caption.className = 'font-handwriting caption';
 
             const randomRotation = (Math.random() - 0.5) * 8;

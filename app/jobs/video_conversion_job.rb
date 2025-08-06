@@ -2,33 +2,50 @@
 class VideoConversionJob < ApplicationJob
   queue_as :default
 
-  def perform(photo_id)
-    photo = Photo.find_by(id: photo_id)
-    return unless photo&.upload&.attached?
+  def perform(video_id)
+    video = Video.find_by(id: video_id)
+    return unless video&.upload&.attached?
 
-    # Não precisa mais chamar photo.processing!, o controller já fez isso.
-    
     begin
-      # Converte o vídeo para GIF
-      convert_video_to_gif(photo)
-      photo.completed! if photo.processed_gif.attached?
+      convert_video_to_gif(video)
     rescue => e
-      photo.failed!
-      Rails.logger.error "Erro na conversão do vídeo para a Photo ID #{photo.id}: #{e.message}"
+      Rails.logger.error "Erro na conversão do vídeo para o Video ID #{video.id}: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
     end
   end
 
   private
 
-  def convert_video_to_gif(photo)
-    temp_upload = Tempfile.new(["upload", photo.upload.filename.extension_with_delimiter])
-    temp_gif = Tempfile.new(["processed", ".gif"])
+  def convert_video_to_gif(video)
+    temp_upload = Tempfile.new(["upload", video.upload.filename.extension_with_delimiter], binmode: true)
+    temp_gif = Tempfile.new(["processed", ".gif"], binmode: true)
+    
     begin
-      photo.upload.blob.download { |chunk| temp_upload.write(chunk) }
+      video.upload.blob.download do |chunk|
+        temp_upload.write(chunk)
+      end
       temp_upload.rewind
+
       movie = FFMPEG::Movie.new(temp_upload.path)
-      movie.transcode(temp_gif.path, { custom: %w(-r 10 -s 640x-1) })
-      photo.processed_gif.attach(io: temp_gif, filename: "#{photo.upload.filename.base}.gif", content_type: 'image/gif')
+
+      # --- ALTERAÇÃO PRINCIPAL AQUI ---
+      # Usamos o filtro de vídeo (vf) para redimensionar, o que é mais confiável.
+      # scale=640:-2: Redimensiona para 640px de largura e calcula a altura 
+      # para manter a proporção. O -2 garante que a altura seja um número par,
+      # evitando erros de codificação.
+      transcoder_options = {
+        custom: %w(-r 10 -f gif),
+        #video_filter: "scale=640:-2" 
+      }
+      
+      movie.transcode(temp_gif.path, transcoder_options)
+
+      video.processed_gif.attach(
+        io: File.open(temp_gif.path), 
+        filename: "#{video.upload.filename.base}.gif", 
+        content_type: 'image/gif'
+      )
+
     ensure
       temp_upload.close
       temp_upload.unlink

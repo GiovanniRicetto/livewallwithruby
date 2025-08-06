@@ -28,18 +28,20 @@
         <div class="bg-gray-900 bg-opacity-80 backdrop-blur-sm text-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-lg w-full text-center">
             
             <div id="initial-view">
-                <h2 class="text-3xl font-bold mb-2">Compartilhe suas Fotos!</h2>
-                <p class="text-gray-300 mb-6">Envie até 10 fotos por vez para o mural.</p>
-                <!-- MUDANÇA: Adicionado um contêiner para os botões -->
+                <h2 class="text-3xl font-bold mb-2">Compartilhe suas Mídias!</h2>
+                <p class="text-gray-300 mb-6">Envie fotos ou vídeos de até 10 segundos.</p>
                 <div class="space-y-4">
                     <button id="take-photo-button" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-colors">📷 Tirar Foto</button>
                     <button id="choose-photos-button" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors">🖼️ Escolher da Galeria</button>
+                    <button id="record-video-button" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors">📹 Gravar Vídeo</button>
+                    <button id="choose-video-button" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors">🎥 Escolher Vídeo da Galeria</button>
                 </div>
             </div>
 
-            <!-- MUDANÇA: Adicionado input para a câmera -->
             <input type="file" id="camera-input" class="hidden" accept="image/*" capture="camera">
             <input type="file" id="gallery-input" class="hidden" accept="image/jpeg,image/png,image/gif" multiple>
+            <input type="file" id="video-input" class="hidden" accept="video/*" capture="camcorder">
+
 
             <div id="preview-container" class="hidden text-left">
                 <h3 class="text-xl font-bold mb-4">Fotos Selecionadas</h3>
@@ -60,8 +62,8 @@
             </div>
             
             <div id="success-message" class="hidden mt-6 text-green-400">
-                <p class="text-2xl font-bold">Fotos enviadas com sucesso!</p>
-                <button id="send-more-button" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg">Enviar Mais Fotos</button>
+                <p class="text-2xl font-bold">Mídia enviada com sucesso!</p>
+                <button id="send-more-button" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg">Enviar Mais Mídias</button>
             </div>
         </div>
     </div>
@@ -73,6 +75,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const RAILS_API_URL = 'http://localhost:3000/photos';
+            const VIDEO_API_URL = 'http://localhost:3000/videos';
             const MAX_FILES = 10;
             const initialView = document.getElementById('initial-view');
             const previewContainer = document.getElementById('preview-container');
@@ -84,6 +87,10 @@
             const choosePhotosButton = document.getElementById('choose-photos-button');
             const cameraInput = document.getElementById('camera-input');
             const galleryInput = document.getElementById('gallery-input');
+            
+            const recordVideoButton = document.getElementById('record-video-button');
+            const chooseVideoButton = document.getElementById('choose-video-button');
+            const videoInput = document.getElementById('video-input');
 
             const uploadButton = document.getElementById('upload-button');
             const cancelButton = document.getElementById('cancel-button');
@@ -91,8 +98,14 @@
             const thumbnailGrid = document.getElementById('thumbnail-grid');
             const photoTitleInput = document.getElementById('photo-title');
             let selectedFiles = [];
+            let selectedVideo = null;
 
-            // MUDANÇA: Adicionando listeners para o novo botão e input
+            // MUDANÇA: Adicionando listeners para os botões de vídeo
+            recordVideoButton.addEventListener('click', () => videoInput.click());
+            chooseVideoButton.addEventListener('click', () => videoInput.click());
+            videoInput.addEventListener('change', handleVideoSelect);
+
+            // MUDANÇA: Adicionando listeners para os botões de foto
             takePhotoButton.addEventListener('click', () => cameraInput.click());
             choosePhotosButton.addEventListener('click', () => galleryInput.click());
             cameraInput.addEventListener('change', handleFileSelect);
@@ -100,6 +113,25 @@
 
             cancelButton.addEventListener('click', resetUI);
             sendMoreButton.addEventListener('click', resetUI);
+
+            function handleVideoSelect(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const videoElement = document.createElement('video');
+                videoElement.preload = 'metadata';
+                videoElement.onloadedmetadata = () => {
+                    window.URL.revokeObjectURL(videoElement.src);
+                    if (videoElement.duration > 10.99) {
+                        alert('O vídeo deve ter no máximo 10 segundos. Por favor, edite o vídeo e tente novamente.');
+                        return;
+                    }
+                    selectedVideo = file;
+                    uploadVideo();
+                };
+                videoElement.src = URL.createObjectURL(file);
+                event.target.value = '';
+            }
 
             function handleFileSelect(event) {
                 const files = Array.from(event.target.files);
@@ -139,13 +171,13 @@
 
             function showView(viewName) {
                 ['initial-view', 'preview-container', 'loading-spinner', 'success-message'].forEach(id => document.getElementById(id).classList.add('hidden'));
-                // Corrigido para lidar com os diferentes nomes de ID
-                const elementId = viewName === 'preview' ? 'preview-container' : (viewName === 'initial' ? 'initial-view' : `${viewName}`);
+                const elementId = viewName === 'preview' ? 'preview-container' : (viewName === 'initial' ? 'initial-view' : viewName);
                 document.getElementById(elementId).classList.remove('hidden');
             }
 
             function resetUI() {
                 selectedFiles = [];
+                selectedVideo = null;
                 thumbnailGrid.innerHTML = '';
                 showView('initial-view');
             }
@@ -181,6 +213,29 @@
                     uploadButton.disabled = false;
                 }
             });
+
+            async function uploadVideo() {
+                if (!selectedVideo) return;
+                showView('loading-spinner');
+
+                const formData = new FormData();
+                formData.append('video[upload]', selectedVideo);
+
+                try {
+                    const response = await fetch(VIDEO_API_URL, { method: 'POST', body: formData });
+                    if (response.ok) {
+                        showView('success-message');
+                    } else {
+                        alert('Erro ao enviar o vídeo.');
+                        showView('initial-view');
+                    }
+                } catch (error) {
+                    alert('Erro de conexão. Verifique se a API está rodando.');
+                    showView('initial-view');
+                } finally {
+                    selectedVideo = null; 
+                }
+            }
             showView('initial-view');
         });
     </script>
