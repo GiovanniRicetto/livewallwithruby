@@ -37,10 +37,12 @@ Rails.application.configure do
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
   
-  config.active_storage.default_url_options = { host: 'localhost', port: 3000 }
+  config.hosts << "immense-relevant-cheetah.ngrok-free,app"
+
+  config.hosts << "immense-relevant-cheetah.ngrok-free.app"
 
   # Set localhost to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
+  config.action_mailer.default_url_options = { host: 'https://immense-relevant-cheetah.ngrok-free.app/' }
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
