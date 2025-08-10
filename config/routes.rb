@@ -7,10 +7,14 @@ Rails.application.routes.draw do
     end
   end
   
-  # --- ALTERAÇÃO AQUI ---
   resources :videos, only: [:create, :index] do
     collection do
       delete 'reset_all'
     end
+  end
+
+  # --- ROTA ADICIONADA AQUI ---
+  namespace :export do
+    get 'download_media'
   end
 end
