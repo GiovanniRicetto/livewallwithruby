@@ -35,7 +35,7 @@ class VideoConversionJob < ApplicationJob
       # evitando erros de codificação.
       transcoder_options = {
         custom: %w(-r 10 -f gif),
-        #video_filter: "scale=640:-2" 
+        video_filter: "scale=1024:-2" 
       }
       
       movie.transcode(temp_gif.path, transcoder_options)

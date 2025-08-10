@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mural de Fotos da Festa</title>
+    <title>Mural de Mídias da Festa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,14 +30,14 @@
         @media (min-width: 768px) {
             #photo-wall-container { top: 150px; gap: 2rem; padding: 2rem 0; }
         }
-        .scroll-row { display: flex; flex-wrap: nowrap; width: max-content; }
-        .scroll-row.scrolling { animation: scroll-left linear infinite; }
-        #row1.scrolling { animation-duration: 80s; }
-        #row2.scrolling { animation-duration: 100s; animation-direction: reverse; }
-        @keyframes scroll-left {
-            from { transform: translateX(0%); }
-            to { transform: translateX(-50%); }
+        
+        .scroll-row {
+            display: flex;
+            flex-wrap: nowrap;
+            width: max-content;
+            will-change: transform;
         }
+        
         .polaroid { background-color: white; padding: 0.5rem; padding-bottom: 3rem; border-radius: 0.125rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); width: 160px; margin: 0 0.5rem; flex-shrink: 0; position: relative; transition: transform 0.2s ease-in-out; cursor: pointer; }
         @media (min-width: 640px) { .polaroid { width: 200px; margin: 0 1rem; } }
         @media (min-width: 1024px) { .polaroid { width: 220px; } }
@@ -69,7 +69,7 @@
             <div class="scroll-row" id="row1"></div>
             <div class="scroll-row" id="row2"></div>
         </main>
-        <div id="empty-state" class="absolute inset-0 flex items-center justify-center text-gray-500 z-0 pointer-events-none">
+        <div id="empty-state" class="absolute inset-0 flex items-center justify-center text-gray-500 z-0 pointer-events: none;">
             <p class="text-2xl bg-black bg-opacity-20 p-4 rounded-lg">Aguardando as primeiras mídias...</p>
         </div>
     </div>
@@ -85,13 +85,24 @@
         <button id="lightbox-close" class="absolute top-4 right-6 text-white text-5xl font-bold cursor-pointer">&times;</button>
     </div>
 
+
     <script>
-        const RAILS_API_URL = 'https://immense-relevant-cheetah.ngrok-free.app/photos';
-        const VIDEO_API_URL = 'https://immense-relevant-cheetah.ngrok-free.app/videos';
+        const NGROK_URL = 'https://immense-relevant-cheetah.ngrok-free.app'; // <-- SUBSTITUA AQUI
+
+        const RAILS_API_URL = `${NGROK_URL}/photos`;
+        const VIDEO_API_URL = `${NGROK_URL}/videos`;
 
         let row1, row2, emptyState, lightbox, lightboxContent, lightboxClose;
         let allMedia = [];
         const POLLING_INTERVAL = 5000;
+
+        let animationFrameId;
+        const NORMAL_SPEED = 0.75;
+        const FAST_SPEED = 3;
+        let xPos1 = 0, xPos2 = 0;
+        let currentSpeed1 = NORMAL_SPEED, currentSpeed2 = NORMAL_SPEED;
+        let isScrolling = false;
+
 
         document.addEventListener('DOMContentLoaded', () => {
             row1 = document.getElementById('row1');
@@ -100,6 +111,11 @@
             lightbox = document.getElementById('lightbox');
             lightboxContent = document.getElementById('lightbox-content');
             lightboxClose = document.getElementById('lightbox-close');
+            
+            row1.addEventListener('mouseenter', () => { currentSpeed1 = FAST_SPEED; });
+            row1.addEventListener('mouseleave', () => { currentSpeed1 = NORMAL_SPEED; });
+            row2.addEventListener('mouseenter', () => { currentSpeed2 = FAST_SPEED; });
+            row2.addEventListener('mouseleave', () => { currentSpeed2 = NORMAL_SPEED; });
 
             fetchAllMedia();
             setInterval(fetchAllMedia, POLLING_INTERVAL);
@@ -110,16 +126,48 @@
             });
         });
 
+        function animate() {
+            if (!isScrolling) return;
+
+            xPos1 -= currentSpeed1;
+            xPos2 += currentSpeed2;
+
+            if (xPos1 < -row1.scrollWidth / 2) {
+                xPos1 = 0;
+            }
+            if (xPos2 > row2.scrollWidth / 2) {
+                xPos2 = 0;
+            }
+
+            row1.style.transform = `translateX(${xPos1}px)`;
+            row2.style.transform = `translateX(${-xPos2}px)`;
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function startAnimation() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            isScrolling = true;
+            animate();
+        }
+
+        function stopAnimation() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            isScrolling = false;
+        }
+
         async function fetchAllMedia() {
             try {
                 const [photosResponse, videosResponse] = await Promise.all([
                     fetch(RAILS_API_URL),
                     fetch(VIDEO_API_URL)
                 ]);
-
                 const albums = photosResponse.ok ? await photosResponse.json() : [];
                 const videos = videosResponse.ok ? await videosResponse.json() : [];
-
                 handleMediaResponse(albums, videos);
             } catch (error) {
                 console.error("Erro ao buscar mídias da API Rails:", error);
@@ -127,7 +175,7 @@
         }
 
         function handleMediaResponse(albums, videos) {
-            const newPhotoList = albums.flatMap((album, albumIndex) =>
+            const newPhotoList = albums.flatMap((album) =>
                 album.image_urls.map((url, imageIndex) => ({
                     id: `photo-${album.id}-${imageIndex}`,
                     url: url,
@@ -135,31 +183,18 @@
                     createdAt: album.created_at
                 }))
             );
-
-            // --- ALTERAÇÃO PRINCIPAL AQUI ---
-            // Filtra o array de vídeos para garantir que cada item é válido e
-            // possui uma 'gif_url' antes de tentar processá-lo.
-            // Isto evita erros caso a API retorne 'null' para vídeos não processados.
             const validVideos = videos.filter(video => video && video.gif_url);
-
             const newVideoList = validVideos.map(video => ({
                     id: `video-${video.id}`,
                     url: video.gif_url,
                     title: 'Vídeo',
                     createdAt: video.created_at
             }));
-
             const newMediaList = [...newPhotoList, ...newVideoList];
-
-            // Ordena a lista pela data de criação para que as mídias mais recentes apareçam.
             newMediaList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-
             emptyState.style.display = newMediaList.length === 0 ? 'flex' : 'none';
-
             const currentIds = allMedia.map(m => m.id).join(',');
             const newIds = newMediaList.map(m => m.id).join(',');
-
             if (currentIds !== newIds) {
                 allMedia = newMediaList;
                 rebuildRows();
@@ -167,9 +202,11 @@
         }
 
         function rebuildRows() {
+            stopAnimation();
+            xPos1 = 0;
+            xPos2 = 0;
             row1.innerHTML = '';
             row2.innerHTML = '';
-
             allMedia.forEach((mediaData, index) => {
                 const targetRow = index % 2 === 0 ? row1 : row2;
                 const polaroid = createPolaroidElement(mediaData);
@@ -181,53 +218,60 @@
         function checkAndApplyScroll() {
             setTimeout(() => {
                 const containerWidth = document.getElementById('photo-wall-container').clientWidth;
-                [row1, row2].forEach(row => {
-                    const originalChildren = Array.from(row.children).filter(child => !child.classList.contains('clone'));
-                    row.innerHTML = '';
-                    originalChildren.forEach(child => row.appendChild(child));
+                let shouldScroll = false;
 
+                [row1, row2].forEach(row => {
+                    // Se a largura do conteúdo for maior que a tela, duplicamos e ativamos o scroll
                     if (row.scrollWidth > containerWidth) {
+                        shouldScroll = true;
+                        // Duplica o conteúdo apenas se ainda não foi duplicado
+                        const originalContentWidth = row.scrollWidth;
                         duplicateRowContent(row);
-                        row.classList.add('scrolling');
-                    } else {
-                        row.classList.remove('scrolling');
+                        // Verifica se a duplicação realmente aconteceu para evitar loops infinitos
+                        if (row.scrollWidth === originalContentWidth) {
+                            duplicateRowContent(row);
+                        }
                     }
                 });
+
+                if (shouldScroll) {
+                    startAnimation();
+                } else {
+                    stopAnimation();
+                }
             }, 100);
         }
 
+
         function duplicateRowContent(row) {
-            const children = Array.from(row.children);
-            children.forEach(child => {
-                const clone = child.cloneNode(true);
-                clone.classList.add('clone');
-                const originalMediaData = allMedia.find(m => m.id === child.dataset.mediaId);
-                if (originalMediaData) {
-                    clone.addEventListener('click', () => openLightbox(originalMediaData));
-                }
-                row.appendChild(clone);
-            });
+            // Verifica se o conteúdo já foi duplicado para não fazer de novo
+            if (row.children.length === allMedia.filter((_, i) => (i % 2 === (row.id === 'row1' ? 0 : 1))).length) {
+                 const children = Array.from(row.children);
+                children.forEach(child => {
+                    const clone = child.cloneNode(true);
+                    const originalMediaData = allMedia.find(m => m.id === child.dataset.mediaId);
+                    if (originalMediaData) {
+                        clone.addEventListener('click', () => openLightbox(originalMediaData));
+                    }
+                    row.appendChild(clone);
+                });
+            }
         }
 
         function createPolaroidElement(mediaData) {
             const div = document.createElement('div');
             div.className = 'polaroid';
             div.dataset.mediaId = mediaData.id;
-
             const mediaElement = document.createElement('img');
             mediaElement.src = mediaData.url;
             mediaElement.className = 'media';
             mediaElement.alt = mediaData.title;
-
             const caption = document.createElement('p');
-            caption.textContent = mediaData.title === 'Vídeo' ? 'Vídeo' : 'Trintou da Ana';
+            caption.textContent = 'Trintou da Ana';
             caption.className = 'font-handwriting caption';
-
             const randomRotation = (Math.random() - 0.5) * 8;
             div.style.transform = `rotate(${randomRotation}deg)`;
-
             div.addEventListener('click', () => openLightbox(mediaData));
-
             div.appendChild(mediaElement);
             div.appendChild(caption);
             return div;
@@ -243,8 +287,8 @@
         }
 
         function closeLightbox() {
-            lightbox.classList.add('hidden');
             lightboxContent.innerHTML = '';
+            lightbox.classList.add('hidden');
         }
     </script>
 </body>

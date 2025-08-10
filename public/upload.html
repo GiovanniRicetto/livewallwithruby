@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enviar Fotos para a Festa</title>
+    <title>Enviar Mídias para a Festa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -39,19 +39,16 @@
             </div>
 
             <input type="file" id="camera-input" class="hidden" accept="image/*" capture="camera">
+            <input type="file" id="record-video-input" class="hidden" accept="video/*" capture="camcorder">
+            
             <input type="file" id="gallery-input" class="hidden" accept="image/jpeg,image/png,image/gif" multiple>
-            <input type="file" id="video-input" class="hidden" accept="video/*" capture="camcorder">
-
+            <input type="file" id="video-gallery-input" class="hidden" accept="video/*">
 
             <div id="preview-container" class="hidden text-left">
                 <h3 class="text-xl font-bold mb-4">Fotos Selecionadas</h3>
-                <div class="mb-4">
-                    <label for="photo-title" class="block text-sm font-medium text-gray-300 mb-1">Título do Álbum</label>
-                    <input type="text" id="photo-title" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2" value="Festa Trintou da Ana">
-                </div>
                 <div id="thumbnail-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-4 max-h-60 overflow-y-auto p-2 bg-gray-800 rounded-lg border"></div>
                 <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                    <button id="upload-button" class="w-full bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600">Enviar Álbum 🚀</button>
+                    <button id="upload-button" class="w-full bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600">Enviar Fotos 🚀</button>
                     <button id="cancel-button" class="w-full bg-gray-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-600">Cancelar</button>
                 </div>
             </div>
@@ -74,42 +71,48 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const RAILS_API_URL = 'https://immense-relevant-cheetah.ngrok-free.app/photos';
-            const VIDEO_API_URL = 'https://immense-relevant-cheetah.ngrok-free.app/videos';
+            const NGROK_URL = 'https://immense-relevant-cheetah.ngrok-free.app'; // <-- SUBSTITUA AQUI
+
+            const RAILS_API_URL = `${NGROK_URL}/photos`;
+            const VIDEO_API_URL = `${NGROK_URL}/videos`;
             const MAX_FILES = 10;
             const initialView = document.getElementById('initial-view');
             const previewContainer = document.getElementById('preview-container');
             const loadingSpinner = document.getElementById('loading-spinner');
             const successMessage = document.getElementById('success-message');
             
-            // MUDANÇA: Selecionando o novo botão e input
+            // Botões
             const takePhotoButton = document.getElementById('take-photo-button');
             const choosePhotosButton = document.getElementById('choose-photos-button');
-            const cameraInput = document.getElementById('camera-input');
-            const galleryInput = document.getElementById('gallery-input');
-            
             const recordVideoButton = document.getElementById('record-video-button');
             const chooseVideoButton = document.getElementById('choose-video-button');
-            const videoInput = document.getElementById('video-input');
 
+            // Inputs
+            const cameraInput = document.getElementById('camera-input');
+            const galleryInput = document.getElementById('gallery-input');
+            const recordVideoInput = document.getElementById('record-video-input');
+            const videoGalleryInput = document.getElementById('video-gallery-input');
+            
+            // Outros elementos
             const uploadButton = document.getElementById('upload-button');
             const cancelButton = document.getElementById('cancel-button');
             const sendMoreButton = document.getElementById('send-more-button');
             const thumbnailGrid = document.getElementById('thumbnail-grid');
-            const photoTitleInput = document.getElementById('photo-title');
             let selectedFiles = [];
             let selectedVideo = null;
 
-            // MUDANÇA: Adicionando listeners para os botões de vídeo
-            recordVideoButton.addEventListener('click', () => videoInput.click());
-            chooseVideoButton.addEventListener('click', () => videoInput.click());
-            videoInput.addEventListener('change', handleVideoSelect);
-
-            // MUDANÇA: Adicionando listeners para os botões de foto
+            // --- ALTERAÇÕES AQUI ---
+            // Cada botão agora aciona o seu input específico.
             takePhotoButton.addEventListener('click', () => cameraInput.click());
             choosePhotosButton.addEventListener('click', () => galleryInput.click());
+            recordVideoButton.addEventListener('click', () => recordVideoInput.click());
+            chooseVideoButton.addEventListener('click', () => videoGalleryInput.click());
+
+            // Listeners para os inputs
             cameraInput.addEventListener('change', handleFileSelect);
             galleryInput.addEventListener('change', handleFileSelect);
+            recordVideoInput.addEventListener('change', handleVideoSelect);
+            videoGalleryInput.addEventListener('change', handleVideoSelect);
 
             cancelButton.addEventListener('click', resetUI);
             sendMoreButton.addEventListener('click', resetUI);
@@ -184,16 +187,11 @@
 
             uploadButton.addEventListener('click', async () => {
                 if (selectedFiles.length === 0) return;
-                const title = photoTitleInput.value.trim();
-                if (title === "") {
-                    alert("Por favor, preencha o título do álbum.");
-                    return;
-                }
+                
                 showView('loading-spinner');
                 uploadButton.disabled = true;
 
                 const formData = new FormData();
-                formData.append('photo[title]', title);
                 selectedFiles.forEach(file => formData.append('photo[images][]', file));
 
                 try {
