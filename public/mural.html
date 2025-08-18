@@ -38,13 +38,13 @@
             will-change: transform;
         }
         
-        .polaroid { background-color: white; padding: 0.5rem; padding-bottom: 3rem; border-radius: 0.125rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); width: 160px; margin: 0 0.5rem; flex-shrink: 0; position: relative; transition: transform 0.2s ease-in-out; cursor: pointer; }
+        .polaroid { background-color: white; padding: 0.5rem; padding-bottom: 3.5rem; border-radius: 0.125rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); width: 200px; margin: 0 0.75rem; flex-shrink: 0; position: relative; transition: transform 0.2s ease-in-out; cursor: pointer; }
         @media (min-width: 640px) { .polaroid { width: 400px; margin: 0 1rem; } }
         @media (min-width: 1024px) { .polaroid { width: 440px; } }
         .polaroid:hover { transform: scale(1.1); }
         .polaroid .media { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; background-color: #e5e7eb; }
-        .polaroid .caption { position: absolute; bottom: 0.5rem; left: 0; right: 0; text-align: center; font-size: 1rem; color: #1f2937; }
-        @media (min-width: 768px) { .polaroid .caption { font-size: 1.125rem; } }
+        .polaroid .caption { position: absolute; bottom: 0.75rem; left: 0; right: 0; text-align: center; font-size: 1.125rem; color: #1f2937; }
+        @media (min-width: 768px) { .polaroid .caption { font-size: 1.25rem; } }
         .upload-button { position: fixed; bottom: 1rem; right: 1rem; background-color: #4f46e5; color: white; padding: 0.75rem; border-radius: 9999px; display: flex; align-items: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,.3); z-index: 20; text-decoration: none; transition: transform 0.2s; }
         @media (min-width: 768px) { .upload-button { bottom: 2rem; right: 2rem; padding: 1rem; } }
         .upload-button:hover { transform: scale(1.1); }
@@ -75,9 +75,7 @@
     </div>
 
     <a id="upload-link" href="upload.html" class="upload-button">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-        </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
      </a>
 
     <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden cursor-pointer">
@@ -85,16 +83,15 @@
         <button id="lightbox-close" class="absolute top-4 right-6 text-white text-5xl font-bold cursor-pointer">&times;</button>
     </div>
 
-
     <script>
-        const NGROK_URL = 'https://immense-relevant-cheetah.ngrok-free.app'; // <-- SUBSTITUA AQUI
-
-        const RAILS_API_URL = `${NGROK_URL}/photos`;
-        const VIDEO_API_URL = `${NGROK_URL}/videos`;
+        const RAILS_API_URL = '/photos';
+        const VIDEO_API_URL = '/videos';
 
         let row1, row2, emptyState, lightbox, lightboxContent, lightboxClose;
-        let allMedia = [];
-        const POLLING_INTERVAL = 5000;
+        const POLLING_INTERVAL = 10000;
+        
+        let displayedMediaIds = new Set();
+        let nextRowIndex = 0;
 
         let animationFrameId;
         const NORMAL_SPEED = 0.75;
@@ -126,31 +123,97 @@
             });
         });
 
+        async function fetchAllMedia() {
+            try {
+                const [photosResponse, videosResponse] = await Promise.all([
+                    fetch(RAILS_API_URL),
+                    fetch(VIDEO_API_URL)
+                ]);
+                const albums = photosResponse.ok ? await photosResponse.json() : [];
+                const videos = videosResponse.ok ? await videosResponse.json() : [];
+                
+                processMediaUpdates(albums, videos);
+            } catch (error) {
+                console.error("Erro ao buscar mídias da API Rails:", error);
+            }
+        }
+
+        function processMediaUpdates(albums, videos) {
+            const newPhotoList = albums.flatMap((album) =>
+                album.image_urls.map((url, imageIndex) => ({
+                    id: `photo-${album.id}-${imageIndex}`,
+                    url: url,
+                    createdAt: album.created_at
+                }))
+            );
+            const validVideos = videos.filter(video => video && video.gif_url);
+            const newVideoList = validVideos.map(video => ({
+                    id: `video-${video.id}`,
+                    url: video.gif_url,
+                    createdAt: video.created_at
+            }));
+            
+            const allMediaFromServer = [...newPhotoList, ...newVideoList];
+            allMediaFromServer.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+            const newItems = allMediaFromServer.filter(item => !displayedMediaIds.has(item.id));
+
+            if (newItems.length > 0) {
+                addItemsToDOM(newItems);
+            }
+            
+            emptyState.style.display = displayedMediaIds.size === 0 ? 'flex' : 'none';
+        }
+
+        function addItemsToDOM(items) {
+            items.forEach(item => {
+                const targetRow = nextRowIndex % 2 === 0 ? row1 : row2;
+                const polaroid = createPolaroidElement(item);
+                targetRow.prepend(polaroid); 
+                displayedMediaIds.add(item.id);
+                nextRowIndex++;
+            });
+            checkAndApplyScroll();
+        }
+
+        function createPolaroidElement(item) {
+            const container = document.createElement('div');
+            container.className = 'polaroid';
+            container.id = item.id;
+            
+            const mediaElement = document.createElement('img');
+            mediaElement.src = item.url;
+            mediaElement.className = 'media';
+            
+            const caption = document.createElement('p');
+            caption.textContent = 'Trintou da Ana';
+            caption.className = 'font-handwriting caption';
+            
+            const randomRotation = (Math.random() - 0.5) * 8;
+            container.style.transform = `rotate(${randomRotation}deg)`;
+            container.addEventListener('click', () => openLightbox(item));
+            
+            container.appendChild(mediaElement);
+            container.appendChild(caption);
+            return container;
+        }
+
         function animate() {
             if (!isScrolling) return;
-
             xPos1 -= currentSpeed1;
             xPos2 += currentSpeed2;
-
-            if (xPos1 < -row1.scrollWidth / 2) {
-                xPos1 = 0;
-            }
-            if (xPos2 > row2.scrollWidth / 2) {
-                xPos2 = 0;
-            }
-
+            if (row1.scrollWidth > 0 && xPos1 < -row1.scrollWidth / 2) { xPos1 = 0; }
+            if (row2.scrollWidth > 0 && xPos2 > row2.scrollWidth / 2) { xPos2 = 0; }
             row1.style.transform = `translateX(${xPos1}px)`;
             row2.style.transform = `translateX(${-xPos2}px)`;
-
             animationFrameId = requestAnimationFrame(animate);
         }
 
         function startAnimation() {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
+            if (!isScrolling) {
+                isScrolling = true;
+                animate();
             }
-            isScrolling = true;
-            animate();
         }
 
         function stopAnimation() {
@@ -160,128 +223,46 @@
             isScrolling = false;
         }
 
-        async function fetchAllMedia() {
-            try {
-                const [photosResponse, videosResponse] = await Promise.all([
-                    fetch(RAILS_API_URL),
-                    fetch(VIDEO_API_URL)
-                ]);
-                const albums = photosResponse.ok ? await photosResponse.json() : [];
-                const videos = videosResponse.ok ? await videosResponse.json() : [];
-                handleMediaResponse(albums, videos);
-            } catch (error) {
-                console.error("Erro ao buscar mídias da API Rails:", error);
-            }
-        }
-
-        function handleMediaResponse(albums, videos) {
-            const newPhotoList = albums.flatMap((album) =>
-                album.image_urls.map((url, imageIndex) => ({
-                    id: `photo-${album.id}-${imageIndex}`,
-                    url: url,
-                    title: album.title,
-                    createdAt: album.created_at
-                }))
-            );
-            const validVideos = videos.filter(video => video && video.gif_url);
-            const newVideoList = validVideos.map(video => ({
-                    id: `video-${video.id}`,
-                    url: video.gif_url,
-                    title: 'Vídeo',
-                    createdAt: video.created_at
-            }));
-            const newMediaList = [...newPhotoList, ...newVideoList];
-            newMediaList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            emptyState.style.display = newMediaList.length === 0 ? 'flex' : 'none';
-            const currentIds = allMedia.map(m => m.id).join(',');
-            const newIds = newMediaList.map(m => m.id).join(',');
-            if (currentIds !== newIds) {
-                allMedia = newMediaList;
-                rebuildRows();
-            }
-        }
-
-        function rebuildRows() {
-            stopAnimation();
-            xPos1 = 0;
-            xPos2 = 0;
-            row1.innerHTML = '';
-            row2.innerHTML = '';
-            allMedia.forEach((mediaData, index) => {
-                const targetRow = index % 2 === 0 ? row1 : row2;
-                const polaroid = createPolaroidElement(mediaData);
-                targetRow.appendChild(polaroid);
-            });
-            checkAndApplyScroll();
-        }
-
         function checkAndApplyScroll() {
             setTimeout(() => {
                 const containerWidth = document.getElementById('photo-wall-container').clientWidth;
                 let shouldScroll = false;
-
                 [row1, row2].forEach(row => {
-                    // Se a largura do conteúdo for maior que a tela, duplicamos e ativamos o scroll
+                    const originalChildren = Array.from(row.children).filter(child => !child.classList.contains('clone'));
+                    row.innerHTML = '';
+                    originalChildren.forEach(child => row.appendChild(child));
+
                     if (row.scrollWidth > containerWidth) {
                         shouldScroll = true;
-                        // Duplica o conteúdo apenas se ainda não foi duplicado
-                        const originalContentWidth = row.scrollWidth;
                         duplicateRowContent(row);
-                        // Verifica se a duplicação realmente aconteceu para evitar loops infinitos
-                        if (row.scrollWidth === originalContentWidth) {
-                            duplicateRowContent(row);
-                        }
                     }
                 });
-
                 if (shouldScroll) {
                     startAnimation();
                 } else {
                     stopAnimation();
                 }
-            }, 100);
+            }, 200);
         }
 
-
         function duplicateRowContent(row) {
-            // Verifica se o conteúdo já foi duplicado para não fazer de novo
-            if (row.children.length === allMedia.filter((_, i) => (i % 2 === (row.id === 'row1' ? 0 : 1))).length) {
-                 const children = Array.from(row.children);
-                children.forEach(child => {
+            const children = Array.from(row.children);
+            if (children.length === 0) return;
+            if (row.scrollWidth > 0 && children.length > 1 && row.scrollWidth <= (children.length * children[0].offsetWidth * 1.5)) {
+                 children.forEach(child => {
                     const clone = child.cloneNode(true);
-                    const originalMediaData = allMedia.find(m => m.id === child.dataset.mediaId);
-                    if (originalMediaData) {
-                        clone.addEventListener('click', () => openLightbox(originalMediaData));
-                    }
+                    clone.classList.add('clone');
+                    const originalMediaData = { id: child.id, url: child.querySelector('img').src };
+                    clone.addEventListener('click', () => openLightbox(originalMediaData));
                     row.appendChild(clone);
                 });
             }
-        }
-
-        function createPolaroidElement(mediaData) {
-            const div = document.createElement('div');
-            div.className = 'polaroid';
-            div.dataset.mediaId = mediaData.id;
-            const mediaElement = document.createElement('img');
-            mediaElement.src = mediaData.url;
-            mediaElement.className = 'media';
-            mediaElement.alt = mediaData.title;
-            const caption = document.createElement('p');
-            caption.textContent = 'Trintou da Ana';
-            caption.className = 'font-handwriting caption';
-            const randomRotation = (Math.random() - 0.5) * 8;
-            div.style.transform = `rotate(${randomRotation}deg)`;
-            div.addEventListener('click', () => openLightbox(mediaData));
-            div.appendChild(mediaElement);
-            div.appendChild(caption);
-            return div;
         }
 
         function openLightbox(mediaData) {
             lightboxContent.innerHTML = '';
             const img = document.createElement('img');
             img.src = mediaData.url;
-            img.alt = mediaData.title;
             lightboxContent.appendChild(img);
             lightbox.classList.remove('hidden');
         }

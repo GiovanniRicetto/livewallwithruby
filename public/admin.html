@@ -58,6 +58,9 @@
             <div class="flex items-center gap-4">
                 <button onclick="document.getElementById('photo-input').click()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Adicionar Fotos</button>
                 <button onclick="document.getElementById('video-input').click()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Adicionar Vídeo</button>
+                
+                <a href="/export/download_media" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Exportar Mídias (.zip)</a>
+                
                 <a href="mural.html" class="text-indigo-400 hover:text-indigo-300">Ver Mural &rarr;</a>
             </div>
         </header>
@@ -90,8 +93,6 @@
             loadingState.style.display = 'block';
 
             try {
-                // --- ALTERAÇÃO PRINCIPAL AQUI ---
-                // Fazemos dois pedidos GET separados, um para fotos e outro para vídeos.
                 const [photosResponse, videosResponse] = await Promise.all([
                     fetch(PHOTOS_API_URL),
                     fetch(VIDEOS_API_URL)
