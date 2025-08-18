@@ -16,16 +16,17 @@ services:
   web:
     container_name: photo_uploader_web
     build: .
-    command: bash -c "rm -f tmp/pids/server.pid && bin/rails db:prepare && bin/rails s -b '0.0.0.0'"
+    # O comando agora é mais simples, pois o entrypoint já executa o db:prepare
+    command: bash -c "rm -f tmp/pids/server.pid && bin/rails s -b '0.0.0.0'"
     volumes:
+      # Monta o código local para que as alterações sejam refletidas instantaneamente
       - .:/rails
-      # Adicione o volume de storage para persistir os arquivos
+      # Volume para persistir os uploads
       - storage_data:/rails/storage
     ports:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://postgres:password@db
-      RAILS_ENV: development
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
     depends_on:
       - db

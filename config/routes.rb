@@ -13,8 +13,8 @@ Rails.application.routes.draw do
     end
   end
 
-  # --- ROTA ADICIONADA AQUI ---
   namespace :export do
     get 'download_media'
   end
+
 end
