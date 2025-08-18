@@ -73,29 +73,28 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const NGROK_URL = 'https://immense-relevant-cheetah.ngrok-free.app'; // <-- SUBSTITUA AQUI
-
-            const RAILS_API_URL = `${NGROK_URL}/photos`;
-            const VIDEO_API_URL = `${NGROK_URL}/videos`;
+            // --- ALTERAÇÃO AQUI ---
+            // A constante NGROK_URL foi removida.
+            // As URLs da API agora são relativas, funcionando em qualquer ambiente.
+            const RAILS_API_URL = '/photos';
+            const VIDEO_API_URL = '/videos';
+            
             const MAX_FILES = 10;
             const initialView = document.getElementById('initial-view');
             const previewContainer = document.getElementById('preview-container');
             const loadingSpinner = document.getElementById('loading-spinner');
             const successMessage = document.getElementById('success-message');
             
-            // Botões
             const takePhotoButton = document.getElementById('take-photo-button');
             const choosePhotosButton = document.getElementById('choose-photos-button');
             const recordVideoButton = document.getElementById('record-video-button');
             const chooseVideoButton = document.getElementById('choose-video-button');
 
-            // Inputs
             const cameraInput = document.getElementById('camera-input');
             const galleryInput = document.getElementById('gallery-input');
             const recordVideoInput = document.getElementById('record-video-input');
             const videoGalleryInput = document.getElementById('video-gallery-input');
             
-            // Outros elementos
             const uploadButton = document.getElementById('upload-button');
             const cancelButton = document.getElementById('cancel-button');
             const sendMoreButton = document.getElementById('send-more-button');
@@ -103,14 +102,11 @@
             let selectedFiles = [];
             let selectedVideo = null;
 
-            // --- ALTERAÇÕES AQUI ---
-            // Cada botão agora aciona o seu input específico.
             takePhotoButton.addEventListener('click', () => cameraInput.click());
             choosePhotosButton.addEventListener('click', () => galleryInput.click());
             recordVideoButton.addEventListener('click', () => recordVideoInput.click());
             chooseVideoButton.addEventListener('click', () => videoGalleryInput.click());
 
-            // Listeners para os inputs
             cameraInput.addEventListener('change', handleFileSelect);
             galleryInput.addEventListener('change', handleFileSelect);
             recordVideoInput.addEventListener('change', handleVideoSelect);
