@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Administração</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #111827; }
+        .polaroid {
+            background-color: #fff;
+            padding: 0.75rem;
+            padding-bottom: 3.5rem;
+            border-radius: 2px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            position: relative;
+            transition: transform 0.2s ease-in-out;
+        }
+        .polaroid:hover {
+            transform: scale(1.05) rotate(1deg);
+        }
+        .polaroid img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+        .delete-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #ef4444;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .polaroid:hover .delete-btn {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="flex flex-wrap gap-4 justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-white">Administração do Mural</h1>
+            <div class="flex items-center gap-4">
+                <button onclick="document.getElementById('photo-input').click()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Adicionar Fotos</button>
+                <button onclick="document.getElementById('video-input').click()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Adicionar Vídeo</button>
+                <a href="mural.html" class="text-indigo-400 hover:text-indigo-300">Ver Mural &rarr;</a>
+            </div>
+        </header>
+        
+        <input type="file" id="photo-input" class="hidden" multiple accept="image/*">
+        <input type="file" id="video-input" class="hidden" accept="video/*">
+
+        <main id="media-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            </main>
+        
+        <div id="loading-state" class="text-center py-10">
+            <p class="text-gray-400">A carregar mídias...</p>
+        </div>
+    </div>
+
+    <script>
+        const PHOTOS_API_URL = '/photos';
+        const VIDEOS_API_URL = '/videos';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMedia();
+
+            document.getElementById('photo-input').addEventListener('change', (e) => handleUpload(e.target.files, 'photos'));
+            document.getElementById('video-input').addEventListener('change', (e) => handleUpload(e.target.files, 'videos'));
+        });
+
+        async function fetchMedia() {
+            const grid = document.getElementById('media-grid');
+            const loadingState = document.getElementById('loading-state');
+            loadingState.style.display = 'block';
+
+            try {
+                // --- ALTERAÇÃO PRINCIPAL AQUI ---
+                // Fazemos dois pedidos GET separados, um para fotos e outro para vídeos.
+                const [photosResponse, videosResponse] = await Promise.all([
+                    fetch(PHOTOS_API_URL),
+                    fetch(VIDEOS_API_URL)
+                ]);
+
+                const photos = photosResponse.ok ? await photosResponse.json() : [];
+                const videos = videosResponse.ok ? await videosResponse.json() : [];
+
+                handleMediaResponse(photos, videos);
+
+            } catch (error) {
+                console.error("Erro ao buscar mídias:", error);
+                grid.innerHTML = `<p class="text-red-400 col-span-full text-center">Falha ao carregar as mídias.</p>`;
+            } finally {
+                loadingState.style.display = 'none';
+            }
+        }
+        
+        function handleMediaResponse(photoAlbums, videos) {
+            const grid = document.getElementById('media-grid');
+            grid.innerHTML = ''; // Limpa o grid
+
+            const photos = photoAlbums.flatMap(album => 
+                album.image_urls.map(url => ({
+                    id: album.id,
+                    type: 'photo',
+                    url: url
+                }))
+            );
+
+            const processedVideos = videos
+                .filter(video => video && video.gif_url)
+                .map(video => ({
+                    id: video.id,
+                    type: 'video',
+                    url: video.gif_url
+                }));
+            
+            const allMedia = [...photos, ...processedVideos];
+
+            if (allMedia.length > 0) {
+                allMedia.forEach(item => {
+                    const polaroid = createPolaroid(item);
+                    grid.appendChild(polaroid);
+                });
+            } else {
+                grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Nenhuma mídia encontrada.</p>`;
+            }
+        }
+
+        function createPolaroid(item) {
+            const container = document.createElement('div');
+            container.className = 'polaroid';
+            container.id = `media-${item.type}-${item.id}`;
+
+            const img = document.createElement('img');
+            img.src = item.url;
+            
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '&times;';
+            deleteBtn.onclick = () => deleteMedia(item.type, item.id);
+
+            container.appendChild(img);
+            container.appendChild(deleteBtn);
+            return container;
+        }
+
+        async function handleUpload(files, type) {
+            if (files.length === 0) return;
+
+            const formData = new FormData();
+            const apiUrl = type === 'photos' ? PHOTOS_API_URL : VIDEOS_API_URL;
+            const formKey = type === 'photos' ? 'photo[images][]' : 'video[upload]';
+            
+            for (const file of files) {
+                formData.append(formKey, file);
+            }
+
+            if (type === 'photos') {
+                formData.append('admin_upload', 'true');
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('Upload concluído com sucesso!');
+                    fetchMedia(); // Atualiza o mural
+                } else {
+                    alert('Ocorreu um erro durante o upload.');
+                }
+            } catch (error) {
+                console.error('Erro de upload:', error);
+                alert('Erro de rede. Não foi possível conectar à API.');
+            }
+        }
+
+        async function deleteMedia(type, id) {
+            if (!confirm(`Tem a certeza de que quer apagar ${type} #${id}?`)) return;
+
+            try {
+                // A rota de exclusão continua a ser a do admin para segurança
+                const response = await fetch(`/admin/${type}s/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    document.getElementById(`media-${type}-${id}`).remove();
+                } else {
+                    alert('Falha ao apagar a mídia.');
+                }
+            } catch (error) {
+                console.error("Erro ao apagar:", error);
+                alert('Ocorreu um erro de rede.');
+            }
+        }
+    </script>
+</body>
+</html>

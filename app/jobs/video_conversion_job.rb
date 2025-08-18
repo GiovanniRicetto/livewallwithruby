@@ -4,11 +4,18 @@ class VideoConversionJob < ApplicationJob
 
   def perform(video_id)
     video = Video.find_by(id: video_id)
-    return unless video&.upload&.attached?
+    return unless video
+
+    # Define o estado como 'processing' no início
+    video.update(status: 'processing')
 
     begin
       convert_video_to_gif(video)
+      # Define como 'completed' se a conversão for bem-sucedida
+      video.update(status: 'completed')
     rescue => e
+      # Define como 'failed' em caso de erro
+      video.update(status: 'failed')
       Rails.logger.error "Erro na conversão do vídeo para o Video ID #{video.id}: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
     end

@@ -17,4 +17,7 @@ Rails.application.routes.draw do
     get 'download_media'
   end
 
+  get 'admin', to: 'admin#index'
+  delete 'admin/photos/:id', to: 'admin#destroy_photo', as: :admin_destroy_photo
+  delete 'admin/videos/:id', to: 'admin#destroy_video', as: :admin_destroy_video
 end
