@@ -37,9 +37,9 @@ Rails.application.configure do
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
   
-  config.hosts << "qwkk5tti2uob.share.zrok.io"
+  config.hosts << ".share.zrok.io"
 
-  config.hosts << "qwkk5tti2uob.share.zrok.io"
+  config.hosts << ".share.zrok.io"
 
   # Set localhost to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: 'https://qwkk5tti2uob.share.zrok.io/' }
