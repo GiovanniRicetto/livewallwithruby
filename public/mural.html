@@ -3,19 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mural de Mídias da Festa</title>
-    <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32">
-    <link rel="apple-touch-icon" href="/favicon.png">
+    <title>Mural de Mídias</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        html, body { height: 100%; overflow: hidden; }
-        body { font-family: 'Inter', sans-serif; background-color: #000000; color: #f0f0f0; }
+        html, body { height: 100%; overflow: auto; } /* Mudança aqui para permitir scroll na grelha */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #000000; 
+            color: #f0f0f0; 
+        }
         .font-handwriting { font-family: 'Kalam', cursive; }
-        .neon-background { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; pointer-events: none; }
-        .neon-light { position: absolute; width: 2px; height: 200%; box-shadow: 0 0 5px, 0 0 10px, 0 0 20px; animation: move-light linear infinite; }
+        
+        /* Estilos do Neon Background (copiado do mural.html) */
+        .neon-background { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: -1; 
+            overflow: hidden; 
+            pointer-events: none; 
+        }
+        .neon-light { 
+            position: absolute; 
+            width: 2px; 
+            height: 200%; 
+            box-shadow: 0 0 5px, 0 0 10px, 0 0 20px; 
+            animation: move-light linear infinite; 
+        }
         .neon-light.pink { color: #ec4899; }
         .neon-light.blue { color: #3b82f6; }
         .neon-light.purple { color: #a855f7; }
@@ -28,33 +48,58 @@
             0% { transform: translateY(-50%) rotate(45deg); }
             100% { transform: translateY(50vh) rotate(45deg); }
         }
-        #photo-wall-container { position: absolute; top: 120px; bottom: 0; left: 0; right: 0; display: flex; flex-direction: column; gap: 1rem; padding: 1rem 0; }
-        @media (min-width: 768px) {
-            #photo-wall-container { top: 150px; gap: 2rem; padding: 2rem 0; }
+
+        /* Estilo do container da grelha */
+        #media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem; /* Espaçamento entre as fotos */
+            position: relative; /* Para garantir que as fotos fiquem acima do neon */
+            z-index: 1; /* Para garantir que as fotos fiquem acima do neon */
         }
-        
-        .scroll-row {
-            display: flex;
-            flex-wrap: nowrap;
-            width: max-content;
-            will-change: transform;
+
+        .polaroid { 
+            background-color: white; 
+            padding: 0.75rem; 
+            padding-bottom: 3.5rem; 
+            border-radius: 0.125rem; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); 
+            position: relative; 
+            transition: transform 0.2s ease-in-out;
+            cursor: pointer;
         }
-        
-        .polaroid { background-color: white; padding: 0.5rem; padding-bottom: 3.5rem; border-radius: 0.125rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); width: 200px; margin: 0 0.75rem; flex-shrink: 0; position: relative; transition: transform 0.2s ease-in-out; cursor: pointer; }
-        @media (min-width: 640px) { .polaroid { width: 400px; margin: 0 1rem; } }
-        @media (min-width: 1024px) { .polaroid { width: 440px; } }
-        .polaroid:hover { transform: scale(1.1); }
-        .polaroid .media { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; background-color: #e5e7eb; }
-        .polaroid .caption { position: absolute; bottom: 0.75rem; left: 0; right: 0; text-align: center; font-size: 1.125rem; color: #1f2937; }
-        @media (min-width: 768px) { .polaroid .caption { font-size: 1.25rem; } }
-        .upload-button { position: fixed; bottom: 1rem; right: 1rem; background-color: #4f46e5; color: white; padding: 0.75rem; border-radius: 9999px; display: flex; align-items: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,.3); z-index: 20; text-decoration: none; transition: transform 0.2s; }
-        @media (min-width: 768px) { .upload-button { bottom: 2rem; right: 2rem; padding: 1rem; } }
-        .upload-button:hover { transform: scale(1.1); }
-        .upload-button svg { width: 1.5rem; height: 1.5rem; }
-        #lightbox-content img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 4px; box-shadow: 0 0 40px rgba(0,0,0,0.5); }
+        .polaroid:hover {
+            transform: scale(1.05);
+        }
+        .polaroid img { 
+            width: 100%; 
+            height: auto; 
+            aspect-ratio: 4 / 3; 
+            object-fit: cover; 
+            background-color: #e5e7eb; 
+        }
+        .polaroid .caption { 
+            position: absolute; 
+            bottom: 0.75rem; 
+            left: 0; 
+            right: 0; 
+            text-align: center; 
+            font-size: 1.125rem; 
+            color: #1f2937; 
+        }
+        #lightbox {
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+        #lightbox-content img { 
+            max-width: 90vw; 
+            max-height: 90vh; 
+            object-fit: contain; 
+            border-radius: 4px; 
+            box-shadow: 0 0 40px rgba(0,0,0,0.5); 
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="p-4 sm:p-8">
     <div class="neon-background">
         <div class="neon-light pink"></div>
         <div class="neon-light blue"></div>
@@ -63,73 +108,55 @@
         <div class="neon-light blue"></div>
     </div>
 
-    <div id="display-view" class="p-4 md:p-8 flex flex-col h-screen">
-        <header class="text-center mb-4 md:mb-8 z-10 flex-shrink-0">
-           <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold text-white font-handwriting" style="text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #f77, 0 0 30px #f77, 0 0 40px #f77, 0 0 55px #f77;">Galeria Trintou</h1>
+    <div class="max-w-7xl mx-auto relative z-10"> <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl md:text-6xl font-bold text-white font-handwriting" style="text-shadow: 0 0 10px #fff, 0 0 20px #f77;">
+                Galeria Trintou
+            </h1>
         </header>
-        <main id="photo-wall-container" class="w-full flex-grow">
-            <div class="scroll-row" id="row1"></div>
-            <div class="scroll-row" id="row2"></div>
+
+        <main id="media-grid">
         </main>
-        <div id="empty-state" class="absolute inset-0 flex items-center justify-center text-gray-500 z-0 pointer-events: none;">
-            <p class="text-2xl bg-black bg-opacity-20 p-4 rounded-lg">Aguardando as primeiras mídias...</p>
+        
+        <div id="loading-state" class="text-center py-10">
+            <p class="text-gray-400">A carregar mídias...</p>
+        </div>
+        <div id="empty-state" class="hidden text-center py-10">
+            <p class="text-2xl text-gray-500">Aguardando as primeiras mídias...</p>
         </div>
     </div>
 
-    <a id="upload-link" href="upload.html" class="upload-button">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-     </a>
-
-    <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden cursor-pointer">
+    <div id="lightbox" class="fixed inset-0 flex items-center justify-center z-50 hidden cursor-pointer">
         <div id="lightbox-content" class="relative"></div>
         <button id="lightbox-close" class="absolute top-4 right-6 text-white text-5xl font-bold cursor-pointer">&times;</button>
     </div>
 
     <script>
-        const RAILS_API_URL = '/photos';
-        const VIDEO_API_URL = '/videos';
+        const PHOTOS_API_URL = '/photos';
+        const VIDEOS_API_URL = '/videos';
+        const POLLING_INTERVAL = 10000; // 10 segundos
 
-        let row1, row2, emptyState, lightbox, lightboxContent, lightboxClose;
-        const POLLING_INTERVAL = 10000;
-        
         let displayedMediaIds = new Set();
-        let nextRowIndex = 0;
-
-        let animationFrameId;
-        const NORMAL_SPEED = 0.75;
-        const FAST_SPEED = 3;
-        let xPos1 = 0, xPos2 = 0;
-        let currentSpeed1 = NORMAL_SPEED, currentSpeed2 = NORMAL_SPEED;
-        let isScrolling = false;
-
+        let lightbox, lightboxContent, lightboxClose;
 
         document.addEventListener('DOMContentLoaded', () => {
-            row1 = document.getElementById('row1');
-            row2 = document.getElementById('row2');
-            emptyState = document.getElementById('empty-state');
             lightbox = document.getElementById('lightbox');
             lightboxContent = document.getElementById('lightbox-content');
             lightboxClose = document.getElementById('lightbox-close');
-            
-            row1.addEventListener('mouseenter', () => { currentSpeed1 = FAST_SPEED; });
-            row1.addEventListener('mouseleave', () => { currentSpeed1 = NORMAL_SPEED; });
-            row2.addEventListener('mouseenter', () => { currentSpeed2 = FAST_SPEED; });
-            row2.addEventListener('mouseleave', () => { currentSpeed2 = NORMAL_SPEED; });
-
-            fetchAllMedia();
-            setInterval(fetchAllMedia, POLLING_INTERVAL);
 
             lightboxClose.addEventListener('click', closeLightbox);
             lightbox.addEventListener('click', (e) => {
                 if (e.target === lightbox) closeLightbox();
             });
+
+            fetchAllMedia();
+            setInterval(fetchAllMedia, POLLING_INTERVAL);
         });
 
         async function fetchAllMedia() {
             try {
                 const [photosResponse, videosResponse] = await Promise.all([
-                    fetch(RAILS_API_URL),
-                    fetch(VIDEO_API_URL)
+                    fetch(PHOTOS_API_URL),
+                    fetch(VIDEOS_API_URL)
                 ]);
                 const albums = photosResponse.ok ? await photosResponse.json() : [];
                 const videos = videosResponse.ok ? await videosResponse.json() : [];
@@ -141,124 +168,65 @@
         }
 
         function processMediaUpdates(albums, videos) {
+            const grid = document.getElementById('media-grid');
+            const loadingState = document.getElementById('loading-state');
+            const emptyState = document.getElementById('empty-state');
+
             const newPhotoList = albums.flatMap((album) =>
                 album.image_urls.map((url, imageIndex) => ({
                     id: `photo-${album.id}-${imageIndex}`,
-                    url: url,
-                    createdAt: album.created_at
+                    url: url
                 }))
             );
             const validVideos = videos.filter(video => video && video.gif_url);
             const newVideoList = validVideos.map(video => ({
                     id: `video-${video.id}`,
-                    url: video.gif_url,
-                    createdAt: video.created_at
+                    url: video.gif_url
             }));
             
             const allMediaFromServer = [...newPhotoList, ...newVideoList];
-            allMediaFromServer.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
             const newItems = allMediaFromServer.filter(item => !displayedMediaIds.has(item.id));
 
             if (newItems.length > 0) {
-                addItemsToDOM(newItems);
+                shuffleArray(newItems);
+                
+                newItems.forEach(item => {
+                    const polaroid = createPolaroidElement(item);
+                    grid.appendChild(polaroid);
+                    displayedMediaIds.add(item.id);
+                });
             }
-            
-            emptyState.style.display = displayedMediaIds.size === 0 ? 'flex' : 'none';
-        }
 
-        function addItemsToDOM(items) {
-            items.forEach(item => {
-                const targetRow = nextRowIndex % 2 === 0 ? row1 : row2;
-                const polaroid = createPolaroidElement(item);
-                targetRow.prepend(polaroid); 
-                displayedMediaIds.add(item.id);
-                nextRowIndex++;
-            });
-            checkAndApplyScroll();
+            loadingState.style.display = 'none';
+            emptyState.style.display = displayedMediaIds.size === 0 ? 'block' : 'none';
+        }
+        
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
         }
 
         function createPolaroidElement(item) {
             const container = document.createElement('div');
             container.className = 'polaroid';
-            container.id = item.id;
             
             const mediaElement = document.createElement('img');
             mediaElement.src = item.url;
-            mediaElement.className = 'media';
             
             const caption = document.createElement('p');
             caption.textContent = 'Trintou da Ana';
             caption.className = 'font-handwriting caption';
             
-            const randomRotation = (Math.random() - 0.5) * 8;
+            const randomRotation = (Math.random() - 0.5) * 6;
             container.style.transform = `rotate(${randomRotation}deg)`;
+
             container.addEventListener('click', () => openLightbox(item));
             
             container.appendChild(mediaElement);
             container.appendChild(caption);
             return container;
-        }
-
-        function animate() {
-            if (!isScrolling) return;
-            xPos1 -= currentSpeed1;
-            xPos2 += currentSpeed2;
-            if (row1.scrollWidth > 0 && xPos1 < -row1.scrollWidth / 2) { xPos1 = 0; }
-            if (row2.scrollWidth > 0 && xPos2 > row2.scrollWidth / 2) { xPos2 = 0; }
-            row1.style.transform = `translateX(${xPos1}px)`;
-            row2.style.transform = `translateX(${-xPos2}px)`;
-            animationFrameId = requestAnimationFrame(animate);
-        }
-
-        function startAnimation() {
-            if (!isScrolling) {
-                isScrolling = true;
-                animate();
-            }
-        }
-
-        function stopAnimation() {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-            }
-            isScrolling = false;
-        }
-
-        function checkAndApplyScroll() {
-            setTimeout(() => {
-                const containerWidth = document.getElementById('photo-wall-container').clientWidth;
-                let shouldScroll = false;
-                [row1, row2].forEach(row => {
-                    const originalChildren = Array.from(row.children).filter(child => !child.classList.contains('clone'));
-                    row.innerHTML = '';
-                    originalChildren.forEach(child => row.appendChild(child));
-
-                    if (row.scrollWidth > containerWidth) {
-                        shouldScroll = true;
-                        duplicateRowContent(row);
-                    }
-                });
-                if (shouldScroll) {
-                    startAnimation();
-                } else {
-                    stopAnimation();
-                }
-            }, 200);
-        }
-
-        function duplicateRowContent(row) {
-            const children = Array.from(row.children);
-            if (children.length === 0) return;
-            if (row.scrollWidth > 0 && children.length > 1 && row.scrollWidth <= (children.length * children[0].offsetWidth * 1.5)) {
-                 children.forEach(child => {
-                    const clone = child.cloneNode(true);
-                    clone.classList.add('clone');
-                    const originalMediaData = { id: child.id, url: child.querySelector('img').src };
-                    clone.addEventListener('click', () => openLightbox(originalMediaData));
-                    row.appendChild(clone);
-                });
-            }
         }
 
         function openLightbox(mediaData) {
