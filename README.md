@@ -33,30 +33,35 @@ O Live Wall é uma aplicação web interativa projetada para eventos, permitindo
 
 ### Instalação Local
 
-1.  **Clone o repositório:**
+1. **Clone o repositório:**
+
     ```bash
-    git clone [https://github.com/giovanniricetto/livewallwithruby.git](https://github.com/giovanniricetto/livewallwithruby.git)
+    git clone https://github.com/giovanniricetto/livewallwithruby.git
     cd livewallwithruby
     ```
 
-2.  **Instale as dependências:**
+2. **Instale as dependências:**
+
     ```bash
     bundle install
     ```
 
-3.  **Configure a base de dados:**
+3. **Configure a base de dados:**
     Certifique-se de que o PostgreSQL está a correr e, em seguida, execute:
+
     ```bash
     bin/rails db:prepare
     ```
 
-4.  **Inicie o servidor:**
+4. **Inicie o servidor:**
+
     ```bash
     bin/dev
     ```
+
     A aplicação estará disponível em `http://localhost:3000`.
 
-5. 
+5. **Inicie ZROK para acessar fora do ambiente local**
 
 ## Estrutura do Frontend
 
