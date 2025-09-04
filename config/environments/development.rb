@@ -42,7 +42,7 @@ Rails.application.configure do
   config.hosts << ".share.zrok.io"
 
   # Set localhost to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: 'https://qwkk5tti2uob.share.zrok.io/' }
+  config.action_mailer.default_url_options = { host: '' }
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log

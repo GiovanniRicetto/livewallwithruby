@@ -1,8 +1,5 @@
-# app/models/photo.rb
-
 class Photo < ApplicationRecord
-    # Esta linha é a mais importante.
-    # Ela cria os métodos '.images' e '.images=' que o erro diz que estão faltando.
+
     has_many_attached :images
   
     validates :title, presence: false
@@ -15,8 +12,8 @@ class Photo < ApplicationRecord
     def validate_image_count
       return if images.blank?
   
-      if images.length > 10
-        errors.add(:images, "Não é possível enviar mais de 10 fotos de uma vez.")
+      if images.length > 2 # Aqui altera a quuantidade permitida de uploads simultaneos na página de upload
+        errors.add(:images, "Não é possível enviar mais de 2 fotos de uma vez durante o evento.")
       end
     end
   end

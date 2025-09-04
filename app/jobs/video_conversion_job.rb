@@ -5,16 +5,13 @@ class VideoConversionJob < ApplicationJob
   def perform(video_id)
     video = Video.find_by(id: video_id)
     return unless video
-
-    # Define o estado como 'processing' no início
+    
     video.update(status: 'processing')
 
     begin
       convert_video_to_gif(video)
-      # Define como 'completed' se a conversão for bem-sucedida
       video.update(status: 'completed')
     rescue => e
-      # Define como 'failed' em caso de erro
       video.update(status: 'failed')
       Rails.logger.error "Erro na conversão do vídeo para o Video ID #{video.id}: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
@@ -34,12 +31,6 @@ class VideoConversionJob < ApplicationJob
       temp_upload.rewind
 
       movie = FFMPEG::Movie.new(temp_upload.path)
-
-      # --- ALTERAÇÃO PRINCIPAL AQUI ---
-      # Usamos o filtro de vídeo (vf) para redimensionar, o que é mais confiável.
-      # scale=640:-2: Redimensiona para 640px de largura e calcula a altura 
-      # para manter a proporção. O -2 garante que a altura seja um número par,
-      # evitando erros de codificação.
       transcoder_options = {
         custom: %w(-r 10 -f gif),
         video_filter: "scale=256:-2" 

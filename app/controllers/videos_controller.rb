@@ -3,13 +3,10 @@ class VideosController < ApplicationController
   skip_before_action :verify_authenticity_token, only: [:create], raise: false
 
   def index
-    # --- ALTERAÇÃO PRINCIPAL AQUI ---
-    # `with_attached_processed_gif` pré-carrega os GIFs processados.
     @videos = Video.with_attached_processed_gif.order(created_at: :desc)
     render json: @videos.map { |video| video_with_gif_url(video) }
   end
-  
-  # ... (o resto do controller permanece o mesmo)
+
   def create
     @video = Video.new(video_params)
 

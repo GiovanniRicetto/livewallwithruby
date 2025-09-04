@@ -1,5 +1,3 @@
-# lib/tasks/export.rake
-
 namespace :export do
     desc "Exporta todas as fotos e GIFs processados para uma pasta local com os seus nomes originais."
     task media: :environment do

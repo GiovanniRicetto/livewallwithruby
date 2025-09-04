@@ -13,7 +13,6 @@ class ExportController < ApplicationController
     # Garante que o Rake pode carregar as tarefas
     Rails.application.load_tasks
     
-    # --- ALTERAÇÃO PRINCIPAL AQUI ---
     # Reativa a tarefa para que ela possa ser executada novamente
     Rake::Task['export:media'].reenable
     

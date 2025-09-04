@@ -1,8 +1,6 @@
-# lib/tasks/videos.rake
 namespace :videos do
   desc "Reprocessa os vídeos que estão pendentes ou que falharam na conversão."
   task reprocess_failed: :environment do
-    # Procura por vídeos com estado 'pending' ou 'failed'
     videos_to_reprocess = Video.where(status: ['pending', 'failed'])
     
     if videos_to_reprocess.any?

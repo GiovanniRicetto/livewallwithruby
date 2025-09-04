@@ -5,15 +5,11 @@ class PhotosController < ApplicationController
   before_action :set_photo, only: %i[ show update destroy ]
 
   def index
-    # --- ALTERAÇÃO PRINCIPAL AQUI ---
-    # Usamos `with_attached_images` para pré-carregar todas as imagens
-    # numa única consulta, resolvendo o problema de N+1.
     @photos = Photo.with_attached_images.order(created_at: :desc)
     
     render json: @photos.map { |photo| photo_with_image_urls(photo) }
   end
 
-  # ... (o resto do controller, como 'create', 'show', etc., permanece o mesmo)
   def create
     @photo = Photo.new(photo_params)
 
