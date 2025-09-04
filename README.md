@@ -18,7 +18,7 @@ O Live Wall é uma aplicação web interativa projetada para eventos, permitindo
 * **Processamento de Vídeo**: FFmpeg
 * **Jobs em Segundo Plano**: Solid Queue
 * **Servidor Web**: Puma
-* **Zero Trust Networking:**: ZROK
+* **Zero Trust Networking**: ZROK
 
 ## Como Começar
 
