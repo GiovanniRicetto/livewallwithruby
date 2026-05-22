@@ -136,6 +136,7 @@
         const POLLING_INTERVAL = 10000; // 10 segundos
 
         let displayedMediaIds = new Set();
+        let lastFetchTime = null;
         let lightbox, lightboxContent, lightboxClose;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -154,17 +155,64 @@
 
         async function fetchAllMedia() {
             try {
-                const [photosResponse, videosResponse] = await Promise.all([
-                    fetch(PHOTOS_API_URL),
-                    fetch(VIDEOS_API_URL)
+                let photosUrl = PHOTOS_API_URL;
+                let videosUrl = VIDEOS_API_URL;
+                
+                if (lastFetchTime) {
+                    photosUrl += `?since=${encodeURIComponent(lastFetchTime)}`;
+                    videosUrl += `?since=${encodeURIComponent(lastFetchTime)}`;
+                }
+
+                const [photosResponse, videosResponse, activePhotosRes, activeVideosRes] = await Promise.all([
+                    fetch(photosUrl),
+                    fetch(videosUrl),
+                    fetch(PHOTOS_API_URL + '/active_ids'),
+                    fetch(VIDEOS_API_URL + '/active_ids')
                 ]);
+                
                 const albums = photosResponse.ok ? await photosResponse.json() : [];
                 const videos = videosResponse.ok ? await videosResponse.json() : [];
+                const activePhotoIds = activePhotosRes.ok ? await activePhotosRes.json() : [];
+                const activeVideoIds = activeVideosRes.ok ? await activeVideosRes.json() : [];
                 
+                if (albums.length > 0 || videos.length > 0) {
+                    // Update lastFetchTime based on the most recent item
+                    const allCreatedDates = [...albums, ...videos].map(item => new Date(item.created_at));
+                    const latestDate = new Date(Math.max(...allCreatedDates));
+                    
+                    if (!lastFetchTime || latestDate > new Date(lastFetchTime)) {
+                        lastFetchTime = latestDate.toISOString();
+                    }
+                }
+
                 processMediaUpdates(albums, videos);
+                processDeletions(activePhotoIds, activeVideoIds);
             } catch (error) {
                 console.error("Erro ao buscar mídias da API Rails:", error);
             }
+        }
+
+        function processDeletions(activePhotoIds, activeVideoIds) {
+            const activeSet = new Set([
+                ...activePhotoIds.map(id => `photo-${id}-0`),
+                ...activeVideoIds.map(id => `video-${id}`)
+            ]);
+
+            for (const id of displayedMediaIds) {
+                if (!activeSet.has(id)) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                        el.style.opacity = '0';
+                        el.style.transform = 'scale(0)';
+                        setTimeout(() => el.remove(), 500);
+                    }
+                    displayedMediaIds.delete(id);
+                }
+            }
+            
+            const emptyState = document.getElementById('empty-state');
+            emptyState.style.display = displayedMediaIds.size === 0 ? 'block' : 'none';
         }
 
         function processMediaUpdates(albums, videos) {
@@ -211,6 +259,7 @@
         function createPolaroidElement(item) {
             const container = document.createElement('div');
             container.className = 'polaroid';
+            container.id = item.id;
             
             const mediaElement = document.createElement('img');
             mediaElement.src = item.url;

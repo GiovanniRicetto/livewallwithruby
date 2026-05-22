@@ -44,7 +44,7 @@
             <input type="file" id="record-video-input" class="hidden" accept="video/*" capture="camcorder">
             
             <input type="file" id="gallery-input" class="hidden" accept="image/jpeg,image/png,image/gif" multiple>
-            <input type="file" id="video-gallery-input" class="hidden" accept="video/*">
+            <input type="file" id="video-gallery-input" class="hidden" accept="video/*" multiple>
 
             <div id="preview-container" class="hidden text-left">
                 <h3 class="text-xl font-bold mb-4">Fotos Selecionadas</h3>
@@ -73,9 +73,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- ALTERAÇÃO AQUI ---
-            // A constante NGROK_URL foi removida.
-            // As URLs da API agora são relativas, funcionando em qualquer ambiente.
             const RAILS_API_URL = '/photos';
             const VIDEO_API_URL = '/videos';
             
@@ -107,10 +104,10 @@
             recordVideoButton.addEventListener('click', () => recordVideoInput.click());
             chooseVideoButton.addEventListener('click', () => videoGalleryInput.click());
 
-            cameraInput.addEventListener('change', handleFileSelect);
+            cameraInput.addEventListener('change', handleCameraSelect);
             galleryInput.addEventListener('change', handleFileSelect);
             recordVideoInput.addEventListener('change', handleVideoSelect);
-            videoGalleryInput.addEventListener('change', handleVideoSelect);
+            videoGalleryInput.addEventListener('change', handleVideoGallerySelect);
 
             cancelButton.addEventListener('click', resetUI);
             sendMoreButton.addEventListener('click', resetUI);
@@ -132,6 +129,75 @@
                 };
                 videoElement.src = URL.createObjectURL(file);
                 event.target.value = '';
+            }
+
+            function handleCameraSelect(event) {
+                const files = Array.from(event.target.files);
+                if (files.length === 0) return;
+                // Exatamente 1 foto da câmera
+                selectedFiles = [files[0]];
+                renderThumbnails();
+                showView('preview');
+                event.target.value = '';
+            }
+
+            async function handleVideoGallerySelect(event) {
+                const files = Array.from(event.target.files);
+                if (files.length === 0) return;
+                if (files.length > 5) {
+                    alert('Você pode selecionar no máximo 5 vídeos da galeria.');
+                    return;
+                }
+                
+                showView('loading-spinner');
+                let hasError = false;
+                let processed = 0;
+
+                for(const file of files) {
+                    const isValid = await checkVideoDuration(file);
+                    if (!isValid) {
+                        alert(`O vídeo ${file.name} tem mais de 10 segundos e foi ignorado.`);
+                        hasError = true;
+                        continue;
+                    }
+                    const formData = new FormData();
+                    formData.append('video[upload]', file);
+                    try {
+                        const res = await fetch(VIDEO_API_URL, { method: 'POST', body: formData });
+                        if (res.ok) {
+                            processed++;
+                        } else {
+                            hasError = true;
+                        }
+                    } catch(e) {
+                        hasError = true;
+                    }
+                }
+
+                if (processed > 0 && !hasError) {
+                    showView('success-message');
+                } else if (processed > 0 && hasError) {
+                    alert('Alguns vídeos falharam no envio ou excederam o limite de tempo.');
+                    showView('success-message');
+                } else {
+                    alert('Nenhum vídeo pôde ser enviado.');
+                    showView('initial-view');
+                }
+                
+                event.target.value = '';
+            }
+
+            function checkVideoDuration(file) {
+                return new Promise((resolve) => {
+                    const videoElement = document.createElement('video');
+                    videoElement.preload = 'metadata';
+                    videoElement.onloadedmetadata = () => {
+                        window.URL.revokeObjectURL(videoElement.src);
+                        resolve(videoElement.duration <= 10.99);
+                    };
+                    videoElement.onerror = () => resolve(false);
+                    videoElement.src = URL.createObjectURL(file);
+                });
             }
 
             function handleFileSelect(event) {

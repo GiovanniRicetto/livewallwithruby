@@ -1,15 +1,19 @@
 # config/routes.rb
 Rails.application.routes.draw do
+  mount Rswag::Ui::Engine => '/api-docs'
+  mount Rswag::Api::Engine => '/api-docs'
   resources :photos do
     collection do
       delete 'destroy_all'
       delete 'reset_all'
+      get 'active_ids'
     end
   end
   
   resources :videos, only: [:create, :index] do
     collection do
       delete 'reset_all'
+      get 'active_ids'
     end
   end
 

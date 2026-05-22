@@ -1,0 +1,190 @@
+---
+openapi: 3.0.1
+info:
+  title: API V1
+  version: v1
+paths:
+  "/photos":
+    get:
+      summary: List photos
+      tags:
+      - Photos
+      parameters:
+      - name: since
+        in: query
+        description: Filter photos created after this ISO8601 timestamp
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    image_urls:
+                      type: array
+                      items:
+                        type: string
+                    created_at:
+                      type: string
+                      format: date-time
+    post:
+      summary: Create photo(s)
+      tags:
+      - Photos
+      parameters:
+      - name: admin_upload
+        in: query
+        description: Set to true to increase max images limit to 50
+        required: false
+        schema:
+          type: boolean
+      responses:
+        '201':
+          description: created
+        '422':
+          description: unprocessable entity
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photo[images][]:
+                  type: array
+                  items:
+                    type: file
+                photo[title]:
+                  type: string
+              required:
+              - photo[images][]
+  "/photos/active_ids":
+    get:
+      summary: List active photo IDs
+      tags:
+      - Photos
+      responses:
+        '200':
+          description: successful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+  "/photos/reset_all":
+    delete:
+      summary: Delete all photos
+      tags:
+      - Admin Actions
+      parameters: []
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  description: Master password
+              required:
+              - password
+  "/videos":
+    get:
+      summary: List videos
+      tags:
+      - Videos
+      parameters:
+      - name: since
+        in: query
+        description: Filter videos created after this ISO8601 timestamp
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    gif_url:
+                      type: string
+                      nullable: true
+                    created_at:
+                      type: string
+                      format: date-time
+    post:
+      summary: Create a video
+      tags:
+      - Videos
+      parameters: []
+      responses:
+        '202':
+          description: Accepted (Processing)
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                video[upload]:
+                  type: file
+              required:
+              - video[upload]
+  "/videos/active_ids":
+    get:
+      summary: List active video IDs
+      tags:
+      - Videos
+      responses:
+        '200':
+          description: successful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+  "/videos/reset_all":
+    delete:
+      summary: Delete all videos
+      tags:
+      - Admin Actions
+      parameters: []
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  description: Master password
+              required:
+              - password
+servers:
+- url: "/"
+  description: Current Server / Hostname
