@@ -1,9 +1,14 @@
 # app/controllers/videos_controller.rb
 class VideosController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:create], raise: false
+  skip_before_action :verify_authenticity_token, only: [:create, :reset_all], raise: false
 
   def index
     @videos = Video.with_attached_processed_gif.order(created_at: :desc)
+    
+    if params[:since].present?
+      @videos = @videos.where('created_at > ?', Time.zone.parse(params[:since]))
+    end
+
     render json: @videos.map { |video| video_with_gif_url(video) }
   end
 
@@ -19,8 +24,16 @@ class VideosController < ApplicationController
   end
 
   def reset_all
+    if params[:password] != "Limpeza Total 3198"
+      render json: { error: 'Senha incorreta' }, status: :unauthorized
+      return
+    end
     Video.destroy_all
     head :no_content
+  end
+
+  def active_ids
+    render json: Video.pluck(:id)
   end
 
   private

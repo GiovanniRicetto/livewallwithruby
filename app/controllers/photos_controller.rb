@@ -1,30 +1,58 @@
 # app/controllers/photos_controller.rb
 
 class PhotosController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:create], raise: false
+  skip_before_action :verify_authenticity_token, only: [:create, :reset_all], raise: false
   before_action :set_photo, only: %i[ show update destroy ]
 
   def index
     @photos = Photo.with_attached_images.order(created_at: :desc)
     
+    if params[:since].present?
+      @photos = @photos.where('created_at > ?', Time.zone.parse(params[:since]))
+    end
+
     render json: @photos.map { |photo| photo_with_image_urls(photo) }
   end
 
   def create
-    @photo = Photo.new(photo_params)
+    images = photo_params[:images] || []
+    images = [images] unless images.is_a?(Array)
 
-    if params[:admin_upload] == 'true'
-      if @photo.save(validate: false)
-        render json: photo_with_image_urls(@photo), status: :created, location: @photo
-      else
-        render json: @photo.errors, status: :unprocessable_entity
+    max_photos = params[:admin_upload] == 'true' ? 50 : 10
+    if images.length > max_photos
+      render json: { images: ["Não é possível enviar mais de #{max_photos} fotos de uma vez."] }, status: :unprocessable_entity
+      return
+    end
+
+    created_photos = []
+    errors = []
+
+    Photo.transaction do
+      images.each do |image|
+        photo = Photo.new(title: photo_params[:title], images: [image])
+        
+        if params[:admin_upload] == 'true'
+          if photo.save(validate: false)
+            created_photos << photo
+          else
+            errors << photo.errors
+            raise ActiveRecord::Rollback
+          end
+        else
+          if photo.save
+            created_photos << photo
+          else
+            errors << photo.errors
+            raise ActiveRecord::Rollback
+          end
+        end
       end
+    end
+
+    if errors.empty?
+      render json: created_photos.map { |p| photo_with_image_urls(p) }, status: :created
     else
-      if @photo.save
-        render json: photo_with_image_urls(@photo), status: :created, location: @photo
-      else
-        render json: @photo.errors, status: :unprocessable_entity
-      end
+      render json: errors.first, status: :unprocessable_entity
     end
   end
   
@@ -51,8 +79,16 @@ class PhotosController < ApplicationController
   end
 
   def reset_all
+    if params[:password] != "Limpeza Total 3198"
+      render json: { error: 'Senha incorreta' }, status: :unauthorized
+      return
+    end
     Photo.destroy_all
     head :no_content
+  end
+
+  def active_ids
+    render json: Photo.pluck(:id)
   end
 
   private

@@ -61,6 +61,8 @@
                 <button onclick="document.getElementById('photo-input').click()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Adicionar Fotos</button>
                 <button onclick="document.getElementById('video-input').click()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Adicionar Vídeo</button>
                 
+                <button onclick="resetAll()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Apagar Tudo</button>
+
                 <a href="/export/download_media" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded">Exportar Mídias (.zip)</a>
                 
                 <a href="mural.html" class="text-indigo-400 hover:text-indigo-300">Ver Mural &rarr;</a>
@@ -68,7 +70,7 @@
         </header>
         
         <input type="file" id="photo-input" class="hidden" multiple accept="image/*">
-        <input type="file" id="video-input" class="hidden" accept="video/*">
+        <input type="file" id="video-input" class="hidden" multiple accept="video/*">
 
         <main id="media-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             </main>
@@ -84,6 +86,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchMedia();
+            setInterval(fetchMedia, 10000); // 10 segundos, mesmo tempo dos murais
 
             document.getElementById('photo-input').addEventListener('change', (e) => handleUpload(e.target.files, 'photos'));
             document.getElementById('video-input').addEventListener('change', (e) => handleUpload(e.target.files, 'videos'));
@@ -115,7 +118,7 @@
         
         function handleMediaResponse(photoAlbums, videos) {
             const grid = document.getElementById('media-grid');
-            grid.innerHTML = ''; // Limpa o grid
+            grid.innerHTML = '';
 
             const photos = photoAlbums.flatMap(album => 
                 album.image_urls.map(url => ({
@@ -166,17 +169,47 @@
         async function handleUpload(files, type) {
             if (files.length === 0) return;
 
+            if (type === 'photos' && files.length > 50) {
+                alert('Você pode enviar no máximo 50 fotos de uma vez.');
+                return;
+            }
+            
+            if (type === 'videos' && files.length > 10) {
+                alert('Você pode enviar no máximo 10 vídeos de uma vez.');
+                return;
+            }
+
+            if (type === 'videos') {
+                try {
+                    let hasError = false;
+                    for (const file of files) {
+                        const formData = new FormData();
+                        formData.append('video[upload]', file);
+                        const res = await fetch(VIDEOS_API_URL, { method: 'POST', body: formData });
+                        if (!res.ok) hasError = true;
+                    }
+                    if (hasError) {
+                        alert('Alguns vídeos falharam no envio.');
+                    } else {
+                        alert('Upload de vídeos concluído com sucesso!');
+                    }
+                    fetchMedia();
+                } catch (error) {
+                    console.error('Erro de upload:', error);
+                    alert('Erro de rede. Não foi possível conectar à API.');
+                }
+                return;
+            }
+
             const formData = new FormData();
-            const apiUrl = type === 'photos' ? PHOTOS_API_URL : VIDEOS_API_URL;
-            const formKey = type === 'photos' ? 'photo[images][]' : 'video[upload]';
+            const apiUrl = PHOTOS_API_URL;
+            const formKey = 'photo[images][]';
             
             for (const file of files) {
                 formData.append(formKey, file);
             }
 
-            if (type === 'photos') {
-                formData.append('admin_upload', 'true');
-            }
+            formData.append('admin_upload', 'true');
 
             try {
                 const response = await fetch(apiUrl, {
@@ -186,7 +219,7 @@
 
                 if (response.ok) {
                     alert('Upload concluído com sucesso!');
-                    fetchMedia(); // Atualiza o mural
+                    fetchMedia();
                 } else {
                     alert('Ocorreu um erro durante o upload.');
                 }
@@ -200,7 +233,6 @@
             if (!confirm(`Tem a certeza de que quer apagar ${type} #${id}?`)) return;
 
             try {
-                // A rota de exclusão continua a ser a do admin para segurança
                 const response = await fetch(`/admin/${type}s/${id}`, {
                     method: 'DELETE'
                 });
@@ -212,6 +244,39 @@
                 }
             } catch (error) {
                 console.error("Erro ao apagar:", error);
+                alert('Ocorreu um erro de rede.');
+            }
+        }
+
+        async function resetAll() {
+            const pwd = prompt("Digite a senha de segurança para apagar todo o evento:");
+            if (!pwd) return;
+
+            if (!confirm("Isso apagará TODAS as fotos e vídeos. Tem certeza?")) return;
+
+            try {
+                const photosRes = await fetch('/photos/reset_all', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pwd })
+                });
+
+                const videosRes = await fetch('/videos/reset_all', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pwd })
+                });
+
+                if (photosRes.ok && videosRes.ok) {
+                    alert('Todo o conteúdo foi apagado com sucesso.');
+                    fetchMedia();
+                } else if (photosRes.status === 401 || videosRes.status === 401) {
+                    alert('Senha incorreta.');
+                } else {
+                    alert('Ocorreu um erro ao tentar apagar tudo.');
+                }
+            } catch (error) {
+                console.error("Erro no reset:", error);
                 alert('Ocorreu um erro de rede.');
             }
         }
