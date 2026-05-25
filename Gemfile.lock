@@ -312,7 +312,7 @@ GEM
       rubocop-performance (>= 1.24)
       rubocop-rails (>= 2.30)
     ruby-progressbar (1.13.0)
-    rubyzip (3.2.2)
+    rubyzip (3.3.0)
     securerandom (0.4.1)
     solid_cable (3.0.12)
       actioncable (>= 7.2)
@@ -387,7 +387,7 @@ DEPENDENCIES
   rswag-specs
   rswag-ui
   rubocop-rails-omakase
-  rubyzip (= 3.2.2)
+  rubyzip (= 3.3.0)
   solid_cable (= 3.0.12)
   solid_cache (= 1.0.8)
   solid_queue (= 1.2.4)
