@@ -20,7 +20,7 @@ gem "solid_cache", "1.0.8"
 gem "solid_queue", "1.2.4"
 gem "solid_cable", "3.0.12"
 
-gem 'rubyzip', '3.2.2'
+gem 'rubyzip', '3.3.0'
 
 # Gemfile
 gem 'rack-cors'
