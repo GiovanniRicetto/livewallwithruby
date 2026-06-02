@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/photo_uploader_api_development
+      - RAILS_ENV=development
+      - SOLID_QUEUE_IN_PUMA=true
+    depends_on:
+      db:
+        condition: service_started
+    command: bash -c "rm -f tmp/pids/server.pid && bin/rails db:prepare && bin/dev -b 0.0.0.0"
+    # Descomente a linha abaixo (volumes) se desejar que as alterações no código reflitam no container em tempo real (ambiente de desenvolvimento puro).
+    # volumes:
+    #   - .:/rails
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=photo_uploader_api_development
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

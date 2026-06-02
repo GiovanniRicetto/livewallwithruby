@@ -65,8 +65,9 @@ O Live Wall é uma aplicação web interativa projetada para eventos, permitindo
     ```
 
 6. **Inicie o servidor:**
+    Para que as conversões de vídeos em segundo plano funcionem localmente, inicie o servidor com a variável para o Solid Queue:
     ```bash
-    bin/dev
+    SOLID_QUEUE_IN_PUMA=true bin/dev
     ```
     A aplicação estará disponível em `http://localhost:3000`.
 
